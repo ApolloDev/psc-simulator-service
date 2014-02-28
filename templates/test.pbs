@@ -1,0 +1,15 @@
+#!/bin/csh
+#PBS -l walltime=00:10:00
+#PBS -l ncpus=16
+#PBS -q debug
+
+cd $PBS_O_WORKDIR
+
+echo RUNNING `date` > starttime
+
+sleep 10
+echo "Testing"
+sleep 10
+echo "Testing"
+
+echo COMPLETED `date` > starttime 

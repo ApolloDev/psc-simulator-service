@@ -1,0 +1,20 @@
+REQUIREMENTS:
+This project was built with Python 2.7.
+
+This project uses the following Python extensions:
+	ZSI: The Zolera Soap Infrastructure, v2.0_rc3 
+
+The extensions can be downloaded at the following URLs:
+	http://sourceforge.net/projects/pywebsvcs/files/ZSI/ZSI-2.0_rc3/
+	
+Note: You must have the exact version of ZSI 
+
+CREATING WEB SERVICE:
+wsdl2py --complexType --lazy --file simulatorservice.wsdl
+
+RUNNING:
+Start the GenericEpidemicModelService:
+	python SimulatorService.py
+	
+Run the example client:
+	python SimulatorServiceClient.py
