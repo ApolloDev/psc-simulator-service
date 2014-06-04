@@ -59,7 +59,20 @@ ServiceCodes = {
     'SVC_TMPDIR_SUCCESS':154,
     'SVC_TMPDIR_FAILED':155,
     'SVC_FILELIST_RECIEVED':156,
-    'SVC_FILELIST_FAILED':157
+    'SVC_FILELIST_FAILED':157,
+    'SVC_FILE_SEND_SUCCESS':167,
+    'SVC_FILE_SEND_FAILED':168,
+    'SVC_SUBMIT_JOB_SUCCESS':169,
+    'SVC_SUBMIT_JOB_FAILED':170,
+    'DB_SUCCESS':158,
+    'DB_NOID_FOUND':159,
+    'DB_CONNECT_SUCCESS':160,
+    'DB_CONNECT_FAILED':161,
+    'DUPLICATE_ID':162,
+    'DB_POP_FAILED':163,
+    'DB_POP_ZERO':164,
+    'DB_QUERY_FAILED':165,
+    'DB_QUERY_NO_RESULTS':166
     }
 
 ServiceDescriptions = {
@@ -120,7 +133,20 @@ ServiceDescriptions = {
     ServiceCodes["SVC_TMPDIR_SUCCESS"]:'Service succeeded in creating a local temporary directory',
     ServiceCodes["SVC_TMPDIR_FAILED"]:'Service failed to create a local temprorary directory',
     ServiceCodes["SVC_FILELIST_RECIEVED"]:'Service successfully recieved a file list from translation service',
-    ServiceCodes["SVC_FILELIST_FAILED"]:'Service failed at getting a file list from translation service'
+    ServiceCodes["SVC_FILELIST_FAILED"]:'Service failed at getting a file list from translation service',
+    ServiceCodes["SVC_FILE_SEND_SUCCESS"]:'Service successfully sent the input files to remote machine',
+    ServiceCodes["SVC_FILE_SEND_FAILED"]:'Service failed sending input files to remote machine',
+    ServiceCodes["SVC_SUBMIT_JOB_SUCCESS"]:'Service successfully submitted job to remote machine',
+    ServiceCodes["SVC_SUBMIT_JOB_FAILED"]:'Service failed submtting job to remote machine',
+    ServiceCodes['DB_SUCCESS']:'Successfully obtained data from the ApolloDB',
+    ServiceCodes['DB_NOID_FOUND']:'No ID found in ApolloDB',
+    ServiceCodes['DB_CONNECT_SUCCESS']:'Successfully connected to the ApolloDB',
+    ServiceCodes['DB_CONNECT_FAILED']:'Failed to connect to the ApolloDB',
+    ServiceCodes['DUPLICATE_ID']:'Tried this request again while it is still running',
+    ServiceCodes['DB_POP_FAILED']:'Failed getting the population from the ApolloDB',
+    ServiceCodes['DB_POP_ZERO']:'ApolloDB query returned zero population',
+    ServiceCodes['DB_QUERY_FAILED']:'ApolloDB query failed',
+    ServiceCodes['DB_QUERY_NO_RESULTS']:'ApolloDB query produced no results'
     }
 
 ServiceTypes = {
@@ -181,7 +207,20 @@ ServiceTypes = {
     ServiceCodes["SVC_TMPDIR_SUCCESS"]:'running',
     ServiceCodes["SVC_TMPDIR_FAILED"]:'failed',
     ServiceCodes["SVC_FILELIST_RECIEVED"]:'running',
-    ServiceCodes["SVC_FILELIST_FAILED"]:'failed'
+    ServiceCodes["SVC_FILELIST_FAILED"]:'failed',
+    ServiceCodes["SVC_FILE_SEND_SUCCESS"]:'staging',
+    ServiceCodes["SVC_FILE_SEND_FAILED"]:'failed',
+    ServiceCodes["SVC_SUBMIT_JOB_SUCCESS"]:'queued',
+    ServiceCodes["SVC_SUBMIT_JOB_FAILED"]:'failed',
+    ServiceCodes['DB_SUCCESS']:'running',
+    ServiceCodes['DB_NOID_FOUND']:'failed',
+    ServiceCodes['DB_CONNECT_SUCCESS']:'running',
+    ServiceCodes['DB_CONNECT_FAILED']:'failed',
+    ServiceCodes['DUPLICATE_ID']:'running',
+    ServiceCodes['DB_POP_FAILED']:'failed',
+    ServiceCodes['DB_POP_ZERO']:'failed',
+    ServiceCodes['DB_QUERY_FAILED']:'failed',
+    ServiceCodes['DB_QUERY_NO_RESULTS']:'failed'
     }
 
 class Log:

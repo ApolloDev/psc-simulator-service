@@ -232,7 +232,6 @@ doc/up.png
 doc/version.tex
 doc/zsi.css
 doc/zsi.html
-doc/zsi.l2h~
 doc/zsi.pdf
 doc/zsi.ps
 doc/zsi.tex

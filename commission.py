@@ -197,7 +197,7 @@ class SSHConn:
                     rl,wl,xl = select.select([stdout.channel],[],[],0.0)
                     if len(rl) > 0:
                         returnValue = stdout.channel.recv(1024)
-                        print "Status: " + str(stdout.channel.recv(1024))
+                        #print "Status: " + str(stdout.channel.recv(1024))
             self._close()
             self.logger.update('SSH_EXECUTE_SUCCESS',message='Command = %s'%command)
 	except Exception as e:
@@ -266,7 +266,8 @@ class SSHConn:
     def submitJob(self,tmpId,simId,simulator="fred",size="medium"):
         
         idString = "BAD"
-        
+
+        print "tmpId, simId, simulator: %s,%s,%s"%(str(tmpId),str(simId),simulator)
         try:
             simKey = self._simConfigs['mappings'][simulator]
             simulatorConf = self._simConfigs[simKey]
@@ -279,7 +280,7 @@ class SSHConn:
             if self._runPBS:
                 
                 idString = self._submitPBSJob(tmpId,simId,simulatorConf,size)
-
+		jobType = "pbs"
             else:
                 ### Generate the runID here and pass it into submit Job for threading
                 timeStamp = int(time.time())
@@ -287,8 +288,9 @@ class SSHConn:
                 idPrefix = simId
                 #t = Process(target=self._submitDirectJob,args=(tmpId,idSuffix,simulatorConf,size))
                 #t.start()
-                self._submitDirectJob(tmpId,idSuffix,simulatorConf,size)
+                self._submitDirectJob(tmpId,simId,simulatorConf,size)
                 idString = str(timeStamp)
+		jobType = "direct"
             self._startTiming = True
             self.logger.update("SSH_SUBMIT_JOB_SUCCESS")
         except Exception as e:
@@ -297,12 +299,13 @@ class SSHConn:
 	if idString == "BAD":
 	    raise RuntimeError("There was a problem submitting the job through connection %s"%self.name)
 
-	return idString
+	return (jobType,idString)
 	
     def _submitDirectJob(self,tmpId,simId,simConf,size="small"):
         ### set and update the status file
         try:
-            ## Create the run script 
+            ## Create the run script
+            print "!!! simId = %s"%(simId)
             with open("%s/apollorun.%s.csh"%(self._localConfiguration['scratchDir'],str(tmpId)),"wb") as f:
                 f.write("%s"%self._createDirectRunScript(simConf,simId,size=size))
             self._directRunDirectory = "%s.%s"%(simConf['runDirPrefix'],str(tmpId))
@@ -310,7 +313,7 @@ class SSHConn:
             self.sendFile("./templates/starttime","%s/starttime"%self._directRunDirectory)
 
             remote_command = 'cd %s/%s.%s;'%(self._remoteDir,simConf['runDirPrefix'],str(tmpId)) 
-            remote_command += 'setenv id ' + simId + '; '
+            remote_command += 'setenv id apollo_%s;'%(str(simId))
             remote_command += 'chmod a+x ./apollorun.csh; ./apollorun.csh'
             
             t = Process(target=self._executeCommand,args=(remote_command,))
@@ -438,15 +441,15 @@ class SSHConn:
             
         return (status,date,secondsRunning)
     
-    def getStatus(self,key):
+    def getStatus(self,key,pbsID=None):
 	pbsStatus = None
 	status = "UNKNOWN"
 	response = "Empty Response"
 	if self._runPBS:
-	    pbsSplit = str(key).split("_")
-	    pbsID = pbsSplit[len(pbsSplit)-1]
+	    #pbsSplit = str(key).split("_")
+	    #pbsID = pbsSplit[len(pbsSplit)-1]
 	    pbsStatus = self._getPBSQueueStatus(pbsID)
-	    if pbsStatus == "U":
+	    if pbsStatus == "U" or pbsStatus == "C":
                 rstat,date,secondsRunning = self._getPBSTimeContents()
                 if rstat == "COMPLETED":
                     status = "COMPLETED"
@@ -457,7 +460,7 @@ class SSHConn:
 			status = "ERROR"
 			response = "Too Many Failures in Get Status"
 		    else:
-			status = "UKNOWN"
+			status = "UNKNOWN"
                     	response = "The service was unable to determine the status of the jobs (time#: %d)"%self._numUNKNOWN
 			
             
@@ -525,7 +528,10 @@ class SSHConn:
     
     def _createDirectRunScript(self,simConf,id,size="small"):
         try:
+	    import random
+	    randStr = "%d"%random.randint(0,100000)
             LocalList = []
+            print "!!!! ID = %s"%(str(id))
             ### This is language to only allow one run to go at a time.
             LocalList.append('#!/bin/csh\n')
             LocalList.append("echo QUEUED `date` > starttime\n")
@@ -544,10 +550,11 @@ class SSHConn:
 
             LocalList.append('echo RUNNING `date` > starttime\n')
             LocalList.append('### Generate Timestamp for ID\n')
-            LocalList.append("%s %s\n"%(simConf['runCommand'].replace("<<ID>>",str(id)),simConf[size]))
-            LocalList.append("%s\n"%(simConf['dbCommand'].replace("<<ID>>",str(id))))
-            LocalList.append("echo COMPLETED `date` > starttime\n")
+            LocalList.append("%s %s\n"%(simConf['runCommand'].replace("<<ID>>","%s_%s"%(str(id),randStr)),simConf[size]))
             LocalList.append("rm -rf $lockfile\n")
+            LocalList.append("%s\n"%(simConf['dbCommand'].replace("<<ID>>","%s_%s"%(str(id),randStr))))
+            LocalList.append("set stats = `cat ./starttime | awk '{print $1}'`\n")
+            LocalList.append("if( $stats != 'LOGERROR') then \necho COMPLETED `date` > starttime\nendif\n")
             self.logger.update("SSH_CREATEDIRRUN_SUCCESS")
         except Exception as e:
             self.logger.update("SSH_CREATEDIRRUN_FAILED",message=str(e))
@@ -581,12 +588,12 @@ def main():
     #sys.exit()
     ### Test on Blacklight
     logger = Log(logFileName_='./test.log')
-    for i in range(0,10):
+    for i in range(0,2):
         tempId = random.randint(0,100000)
-        if i < 2:
-            connections[tempId] = SSHConn(logger,machineName_='blacklight.psc.xsede.org',debug_=True)
-        else:
-            connections[tempId] = SSHConn(logger,machineName_='unicron.psc.edu',debug_=True)
+        #if i < 2:
+        connections[tempId] = SSHConn(logger,machineName_='fe-sandbox.psc.edu',debug_=True)
+        #else:
+        #    connections[tempId] = SSHConn(logger,machineName_='unicron.psc.edu',debug_=True)
         
         connections[tempId]._mkdir(simWS.configuration['simulators']['test']['runDirPrefix']+"."+str(tempId))
         pbsId = connections[tempId].submitJob(tempId,simId="Test_ID",simulator="test",size="debug")

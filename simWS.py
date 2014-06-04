@@ -2,7 +2,9 @@ configuration = {
 'local': {
         'scratchDir':'/home/stbrown/hold/scratch',
         'serviceDir':'/usr/local/packages/Simulator-WS-v2.0',
-        'logFile':'./sim.log'
+        'logFile':'./sim.log',
+        'port':'8089',
+        'version':'2_0_1'
 	},
 'machines':{
 	'blacklight.psc.xsede.org':{
@@ -20,6 +22,22 @@ configuration = {
         'small':'-l ncpus=16 -l walltime=1:30:00',
         'debug':'-l ncpus=16 -l walltime=00:30:00 -q debug',
         'getID':"set words = `echo $PBS_JOBID | sed 's/\./ /g'`; set id = $words[1]"
+		},
+	'fe-sandbox.psc.edu':{
+		'username':'stbrown',
+		'password':'',
+		'privateKeyFile':'/usr/local/packages/.k/id_rsa.sand',
+		'queueType':'PBS',
+		'remoteDir':'/data/fs/stbrown/apolloTemp',
+		'submitCommand':'qsub',
+		'special':'',
+		'qstatCommand':'qstat',
+		'useModules':False,
+		'big':'-l nodes=4:ppn=16',
+		'medium':'-l nodes=1:ppn=10',
+		'small':'-l nodes=1:ppn=10',
+		'debug':'-l nodes=1:ppn=10',
+		'getID':"set words = `echo $PBS_JOBID | sed 's/\./ /g'`; set id = $words[1]"
 		},
 	'unicron.psc.edu':{
 		'username':'stbrown',
@@ -45,20 +63,20 @@ configuration = {
             'defaultMachine':['blacklight.psc.xsede.org'],
             'runDirPrefix':'fred.tmp',
             'moduleCommand':'module load fred; module load python',
-            'runCommand':'fred_job -p config.txt -k <<ID>>$id',
-            'dbCommand':'touch .dbloading\npython $FRED_HOME/bin/fred_to_apollo_parallel.py -k <<ID>>$id\nrm -rf .dbloading',
+            'runCommand':'fred_job -p config.txt -k apollo_<<ID>>$id',
+            'dbCommand':'touch .dbloading\npython $FRED_HOME/bin/fred_to_apollo_parallel.py -k apollo_<<ID>>$id\nrm -rf .dbloading',
             'big':'-m 1 -n 2 -t 32',
             'medium':'-m 2 -n 4 -t 16',
             'small':'-m 8 -n 8 -t 2',
             'debug':'-m 8 -n 8 -t 2'
 		},
         'fred_V1_i':{
-	    'stagedMachines':['unicron.psc.edu'],
-	    'defaultMachine':['unicron.psc.edu'],
+	    'stagedMachines':['fe-sandbox.psc.edu'],
+	    'defaultMachine':['fe-sandbox.psc.edu'],
             'runDirPrefix':'fred.tmp',
             'moduleCimmand':'',
-	    'runCommand':'fred_job -p config.txt -k <<ID>>',
-            'dbCommand':'touch .dbloading\npython $FRED_HOME/bin/fred_to_apollo_parallel.py -k <<ID>>\nrm -rf .dbloading',
+	    'runCommand':'fred_job -p config.txt -k apollo_<<ID>>',
+            'dbCommand':'touch .dbloading\npython $FRED_HOME/bin/fred_to_apollo_census.py -k apollo_<<ID>> -i <<ID>>\nrm -rf .dbloading',
             'big':'-m 1 -n 1 -t 16',
             'medium':'-m 2 -n 2 -t 4',
 	    'small':'-m 8 -n 8 -t 2',

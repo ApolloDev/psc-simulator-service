@@ -19,7 +19,7 @@ Created on Nov 29, 2012
 @author: John Levander
 '''
 
-from SimulatorService_v2_0_services_types import *
+from SimulatorService_v2_0_1_services_types import *
 import logging
 
 class ApolloUtils:

@@ -19,12 +19,39 @@ Created on Nov 29, 2012
 @author: John Levander and Shawn Brown
 '''
 
-from SimulatorService_v2_0_services_types import *
+from SimulatorService_v2_0_1_services_types import *
 import inspect
 
 
-
 class ApolloFactory:
+    def new_RunSimulationMessage(self):
+        mess = ns1.RunSimulationMessage_Def(None).pyclass()
+        mess._authentication = ns1.Authentication_Def(None).pyclass()
+        mess._simulatorIdentification = ns1.SoftwareIdentification_Def(None).pyclass()
+        mess._simulatorTimeSpecification = ns1.SimulatorTimeSpecification_Def(None).pyclass()
+        mess._infectiousDiseaseScenario = ns1.InfectiousDiseaseScenario_Def(None).pyclass()
+        return mess
+
+    def new_InfectiousDiseaseScenario(self):
+        ifdscen = ns1.InfectiousDiseaseScenario_Def(None).pyclass()
+        ifdscen._location = ns1.Location_Def(None).pyclass()
+        ifdscen._infections = []
+        #ns1.Infection_Def(None).pyclass()
+        ifdscen._diseases = []
+        #ns1.InfectiousDisease_Def(None).pyclass()
+        #ifdscen._contaminations = []
+        #ns1.Contamination_Def(None).pyclass()
+        #ifdscen._infectious
+        return ifdscen
+    
+    #def new_Location(self):
+    #    loc = ns1.Location_Def(None).pyclass()
+    
+    def new_Infection(self):
+        inf = ns1.Infection_Def(None).pyclass()
+        inf._infectionAquisitions = [ns1.InfectionAcquisition_Def(None).pyclass()]
+        
+        return inf
     
     def new_SimulatorConfiguration(self):
         cfg = ns1.SimulatorConfiguration_Def(None).pyclass()
@@ -86,18 +113,18 @@ class ApolloFactory:
     def new_ReactiveControlMeasure(self):
         rcm = ns1.ReactiveControlMeasure_Def(None).pyclass()
         #rcm._controlMeasureReactiveTriggersDefinition = self.new_ReactiveTriggersDefinition()
-	for name,obj in inspect.getmembers(rcm):
+        for name,obj in inspect.getmembers(rcm):
             if name[0:11] == "set_element":
-		print name
-		obj(None)
-	return rcm
+                print name
+                obj(None)
+        return rcm
     
     def new_ReactiveTriggersDefinition(self):
-	rtd = ns1.ReactiveTriggersDefinition_Def(None).pyclass()
-	for name,obj in inspect.getmembers(rtd):
-	    if name[0:11] == "set_element":
-		obj(None)
-	return rtd
+        rtd = ns1.ReactiveTriggersDefinition_Def(None).pyclass()
+        for name,obj in inspect.getmembers(rtd):
+            if name[0:11] == "set_element":
+                obj(None)
+        return rtd
     
     def new_SchoolClosureControlMeasure(self):
         sc = ns1.SchoolClosureControlMeasure_Def(None).pyclass()
