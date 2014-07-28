@@ -72,7 +72,9 @@ ServiceCodes = {
     'DB_POP_FAILED':163,
     'DB_POP_ZERO':164,
     'DB_QUERY_FAILED':165,
-    'DB_QUERY_NO_RESULTS':166
+    'DB_QUERY_NO_RESULTS':166,
+    'DB_QUERY_MORE_THAN_ONE':167,
+    'DB_STATUS_ERROR':168
     }
 
 ServiceDescriptions = {
@@ -146,7 +148,9 @@ ServiceDescriptions = {
     ServiceCodes['DB_POP_FAILED']:'Failed getting the population from the ApolloDB',
     ServiceCodes['DB_POP_ZERO']:'ApolloDB query returned zero population',
     ServiceCodes['DB_QUERY_FAILED']:'ApolloDB query failed',
-    ServiceCodes['DB_QUERY_NO_RESULTS']:'ApolloDB query produced no results'
+    ServiceCodes['DB_QUERY_NO_RESULTS']:'ApolloDB query produced no results',
+    ServiceCodes['DB_QUERY_MORE_THAN_ONE']:'ApolloDB query produced more than one result, when it should be unique',
+    ServiceCodes['DB_STATUS_ERROR']:'ApolloDB: Status not in the allowed status'
     }
 
 ServiceTypes = {
@@ -220,7 +224,9 @@ ServiceTypes = {
     ServiceCodes['DB_POP_FAILED']:'failed',
     ServiceCodes['DB_POP_ZERO']:'failed',
     ServiceCodes['DB_QUERY_FAILED']:'failed',
-    ServiceCodes['DB_QUERY_NO_RESULTS']:'failed'
+    ServiceCodes['DB_QUERY_NO_RESULTS']:'failed',
+    ServiceCodes['DB_QUERY_MORE_THAN_ONE']:'failed',
+    ServiceCodes['DB_STATUS_ERROR']:'failed'
     }
 
 class Log:

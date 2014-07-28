@@ -19,7 +19,7 @@ Created on Nov 29, 2012
 @author: John Levander and Shawn Brown
 '''
 
-from SimulatorService_v2_0_1_services_types import *
+from SimulatorService_v2_0_2_types import *
 import inspect
 
 
@@ -145,6 +145,8 @@ class ApolloFactory:
 
     def new_MethodCallStatus(self):
         run_status = ns1.MethodCallStatus_Def(None).pyclass()
+        run_status._status = ns1.MethodCallStatusEnum_Def(None).pyclass()
+	run_status._status = "unknown"
         return run_status
     
     def new_SupportedPopulationLocation(self):

@@ -24,9 +24,7 @@ import select
 import datetime,dateutil.parser
 import time
 import math
-#from threading import Thread
 from multiprocessing import Process,Queue
-#from ApolloUtils import *
 import simWS
 from logger import Log
 
@@ -34,7 +32,6 @@ class SSHConn:
     def __init__(self, logger_, machineName_="blacklight.psc.xsede.org", debug_=False):
         # Machine Parameters
         self.logger = logger_
-        print simWS.configuration['machines'].keys()
         if machineName_ not in simWS.configuration['machines'].keys():
             self.logger.update('CONF_MACHINE_FIND_FAILED')
            
@@ -57,7 +54,8 @@ class SSHConn:
 	self.isConnectedSFTP = False
 	
         self.name = "SSH Connection: %s"%self._machine
-	self.debug = debug_	
+	self.debug = debug_
+	
         ### Flags for internals
         self._runPBS = False
 	self._numUNKNOWN = 0
@@ -65,10 +63,6 @@ class SSHConn:
         if self._configuration['queueType'] == 'PBS':
             self._runPBS = True
         
-        #self._getScratch = False
-        #if self.configuration['remoteDir'] == '$SCRATCH':
-        #    self._getScrath = True
-
 	self._remoteDir = self._configuration['remoteDir']
         if self._remoteDir == "$SCRATCH":
             try:
@@ -80,15 +74,12 @@ class SSHConn:
                 self.logger.update('SSH_SCRATCH_DIR_FAILED',message="%s"%str(e))
                 raise e
 
-	#self._statusFileDir = self._localConfiguration['statusFileDir']
-	#self._statusFile = None
 	self._remoteTmpDir = None
 	self._runScript = None
 	self._runScriptName = None
         self._directRunDirectory = None
         self._startTiming = False
-            
-	    
+               
     def _connect(self,blocking=True):
 	### open SSH connection
         timeout = 3000
@@ -177,8 +168,7 @@ class SSHConn:
             self.logger.update("SSH_GETSCRATCH_SUCCESS",message="%s"%scratchString)
 	except Exception as e:
             self.logger.update("SSH_GETSCRATCH_FAILED",message="%s"%str(e))
-            raise
-	    #raise RuntimeError("Error in getting SCRATCH directory through connection %s"%self.name)
+            raise e
         
 	return scratchString
         
@@ -189,7 +179,7 @@ class SSHConn:
         returnValue=None
 	try:
             self._connect()
-            print "Excecuting %s"%command
+            if self.debug: print "Excecuting %s"%command
 	    stdin,stdout,stderr = self.ssh.exec_command(command)
             
             while not stdout.channel.exit_status_ready():
@@ -197,7 +187,6 @@ class SSHConn:
                     rl,wl,xl = select.select([stdout.channel],[],[],0.0)
                     if len(rl) > 0:
                         returnValue = stdout.channel.recv(1024)
-                        #print "Status: " + str(stdout.channel.recv(1024))
             self._close()
             self.logger.update('SSH_EXECUTE_SUCCESS',message='Command = %s'%command)
 	except Exception as e:
@@ -206,9 +195,7 @@ class SSHConn:
 	    print "%s"%command
 	    print "stderr returned: %s"%str(stderr) 
 	    raise e
-#RuntimeError('Error with executing "%s" over %s'%(command,self.name))
-        
-        print "RETURNING " + str(returnValue)
+
 	return returnValue
 
     def _mkdir(self,remoteDirectoryName):
@@ -263,11 +250,11 @@ class SSHConn:
             self.logger.update("SSH_SENDFILE_FAILED",message="%s->%s: %s"%(localFileName,remoteFileName,str(e)))
             raise 
 
-    def submitJob(self,tmpId,simId,simulator="fred",size="medium"):
+    def submitJob(self,tmpId,simId,simulator="fred",size="medium",user=None):
         
         idString = "BAD"
 
-        print "tmpId, simId, simulator: %s,%s,%s"%(str(tmpId),str(simId),simulator)
+        if self.debug: print "tmpId, simId, simulator: %s,%s,%s"%(str(tmpId),str(simId),simulator)
         try:
             simKey = self._simConfigs['mappings'][simulator]
             simulatorConf = self._simConfigs[simKey]
@@ -278,16 +265,13 @@ class SSHConn:
         
         try:
             if self._runPBS:
-                
-                idString = self._submitPBSJob(tmpId,simId,simulatorConf,size)
+                idString = self._submitPBSJob(tmpId,simId,simulatorConf,size,user)
 		jobType = "pbs"
             else:
                 ### Generate the runID here and pass it into submit Job for threading
                 timeStamp = int(time.time())
                 idSuffix = str(simId)+str(timeStamp)
                 idPrefix = simId
-                #t = Process(target=self._submitDirectJob,args=(tmpId,idSuffix,simulatorConf,size))
-                #t.start()
                 self._submitDirectJob(tmpId,simId,simulatorConf,size)
                 idString = str(timeStamp)
 		jobType = "direct"
@@ -298,19 +282,18 @@ class SSHConn:
         
 	if idString == "BAD":
 	    raise RuntimeError("There was a problem submitting the job through connection %s"%self.name)
-
+        
 	return (jobType,idString)
 	
     def _submitDirectJob(self,tmpId,simId,simConf,size="small"):
         ### set and update the status file
         try:
             ## Create the run script
-            print "!!! simId = %s"%(simId)
             with open("%s/apollorun.%s.csh"%(self._localConfiguration['scratchDir'],str(tmpId)),"wb") as f:
                 f.write("%s"%self._createDirectRunScript(simConf,simId,size=size))
             self._directRunDirectory = "%s.%s"%(simConf['runDirPrefix'],str(tmpId))
             self.sendFile("%s/apollorun.%s.csh"%(self._localConfiguration['scratchDir'],str(tmpId)),"%s/apollorun.csh"%self._directRunDirectory)
-            self.sendFile("./templates/starttime","%s/starttime"%self._directRunDirectory)
+            self.sendFile("/usr/local/packages/Simulator-WS-v2.0.2/templates/starttime","%s/starttime"%self._directRunDirectory)
 
             remote_command = 'cd %s/%s.%s;'%(self._remoteDir,simConf['runDirPrefix'],str(tmpId)) 
             remote_command += 'setenv id apollo_%s;'%(str(simId))
@@ -326,13 +309,13 @@ class SSHConn:
             raise e
          
         return 1
-    def _submitPBSJob(self,tmpId,simId,simConf,size="small"):
+    def _submitPBSJob(self,tmpId,simId,simConf,size="small",user=None):
         ## Create starttime file
         try:
             with open(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),"wb") as f:
-                f.write("%s"%self.createPBSRunScript(simConf,simId,size=size))
+                f.write("%s"%self.createPBSRunScript(simConf,simId,size=size,user=user))
             self.sendFile(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),simConf['runDirPrefix']+"."+str(tmpId)+"/submit.pbs")
-            self.sendFile('./templates/starttime',simConf['runDirPrefix']+"."+str(tmpId) + '/starttime')
+            self.sendFile('/usr/local/packages/Simulator-WS-v2.0.2/templates/starttime',simConf['runDirPrefix']+"."+str(tmpId) + '/starttime')
             self._startTiming = True
             self.logger.update("SSH_PBS_CREATE_SCRIPT_SUCCESS")
         except Exception as e:
@@ -356,8 +339,10 @@ class SSHConn:
                 self.logger.update("SSH_PBS_ID_SUCCESS")
             except Exception as e:
                 self.logger.update("SSH_PBS_ID_FAILED",message="%s"%str(e))
-                raise e#RuntimeError("Error in getting PBS ID through connection %s"%self.name)
+                raise e
+
             self.logger.update("SSH_PBS_SUBMIT_SUCCESS",message="%s"%str(idString))
+
         except Exception as e:
             self.logger.update("SSH_PBS_SUBMIT_FAILED",message="%s"%str(e))
             raise e
@@ -379,7 +364,6 @@ class SSHConn:
                 return "U"
             else:
                 statusList = returnVal.split("\n")
-                #print "StatusList = " + str(statusList)
                 pbsString = statusList[len(statusList)-2]
                 if self.debug: print "PBSString = " + str(pbsString)
                 pbsStatus = pbsString.split()[4]
@@ -393,9 +377,7 @@ class SSHConn:
     
     def _getPBSTimeContents(self):
         if not self._startTiming:
-            print "StartTiming is false"
             return ("QUEUED","0",0.0)
-        print "Timing is true"
         remoteCommand = "tail -1 %s/starttime"%(self.pbsWorkDir)
         returnVal = None
         while returnVal is None:
@@ -420,11 +402,10 @@ class SSHConn:
         if not self._startTiming:
             return ("QUEUED","0",0.0)
         remoteCommand = "tail -1 %s/%s/starttime"%(self._remoteDir,self._directRunDirectory)
-        print remoteCommand
         returnVal = None
         while returnVal is None:
             returnVal = self._executeCommand(remoteCommand)
-        print "DirTim: " + str(returnVal) + " " + str(returnVal is None)
+        if self.debug: print "DirTim: " + str(returnVal) + " " + str(returnVal is None)
         
         returnVal = returnVal.strip()
         if returnVal == "Nothing":
@@ -446,8 +427,6 @@ class SSHConn:
 	status = "UNKNOWN"
 	response = "Empty Response"
 	if self._runPBS:
-	    #pbsSplit = str(key).split("_")
-	    #pbsID = pbsSplit[len(pbsSplit)-1]
 	    pbsStatus = self._getPBSQueueStatus(pbsID)
 	    if pbsStatus == "U" or pbsStatus == "C":
                 rstat,date,secondsRunning = self._getPBSTimeContents()
@@ -471,7 +450,7 @@ class SSHConn:
 	    elif pbsStatus == "R":
 		status = "RUNNING"
                 rstat,date,secondsRunning = self._getPBSTimeContents()
-                print "Running Date: " + str(rstat) + " " + str(date) + " " + str(secondsRunning)
+                if self.debug: print "Running Date: " + str(rstat) + " " + str(date) + " " + str(secondsRunning)
                 if rstat == "Nothing":
                     response = "The run is running on " + self._machine +\
                         ' at ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M") 
@@ -486,9 +465,8 @@ class SSHConn:
 		
 	    return (status,response)
 	else:
-#            print "Direct Running not supported yet"
             status,date,secondsRunning = self._getDirectTimeContents()
-            print "Status, Date, seconds Running: ,%s,%s,%s"%(status,str(date),str(secondsRunning))
+            if self.debug: print "Status, Date, seconds Running: ,%s,%s,%s"%(status,str(date),str(secondsRunning))
             
             ## make this more robust
             if status == "RUNNING":
@@ -503,25 +481,69 @@ class SSHConn:
                 response = 'The run completed successfully at %s'%(date)
 	return (status,response)
 
-    def createPBSRunScript(self,simConf,id,size="debug"):
+    def createPBSRunScript(self,simConf,id,size="small",user=None):
         try:
             PBSList = []
-            PBSList.append("#!/bin/csh\n")
-            PBSList.append("#PBS %s"%(self._configuration[size]))
-            PBSList.append("\n")
-            PBSList.append("%s\n\n"%self._configuration['special'])
+            PBSList.append('#!/bin/csh\n')
+            PBSList.append('#PBS %s\n'%(self._configuration[size]))
+            PBSList.append('#PBS -o apollo_out.txt\n')
+            PBSList.append('#PBS -e apollo_err.txt\n')
+            if user[-5:] == "+priv":
+                PBSList.append('#PBS -q %s\n'%self._configuration['priorityQueue'])
+            PBSList.append('\n')
+            PBSList.append('%s\n\n'%self._configuration['special'])
             if self._configuration['useModules']:
-                PBSList.append("%s\n"%simConf['moduleCommand'])
-            PBSList.append("cd $PBS_O_WORKDIR\n")
-            PBSList.append("echo RUNNING `date` > starttime\n")
-            PBSList.append("%s\n"%self._configuration['getID'])
-
-            PBSList.append("%s %s\n"%(simConf['runCommand'].replace("<<ID>>",str(id)),simConf[size]))
-            PBSList.append("%s\n"%(simConf['dbCommand'].replace('<<ID>>',str(id))))
-            PBSList.append("echo COMPLETED `date` > starttime\n")
+                PBSList.append('%s\n'%simConf['moduleCommand'])
+            PBSList.append('cd $PBS_O_WORKDIR\n')
+            PBSList.append('%s -s running -m "simulation started"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('if ($status) then\n')
+            PBSList.append('   echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('   touch .failed\n')
+            PBSList.append('   exit 1\n')
+            PBSList.append('endif\n')
+            PBSList.append('%s\n'%self._configuration['getID'])
+            PBSList.append('(%s %s > run.stdout) >& run.stderr\n'%(simConf['runCommand'].replace("<<ID>>",str(id)),simConf[size]))
+	    PBSList.append('set errCont = `stat -c %s run.stderr`\n')
+            PBSList.append('if ($status || $errCont != "0") then\n')
+            PBSList.append('   %s -s failed -m "The simulation failed during running"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('   if ($status) then\n')
+            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('       touch .failed\n')
+            PBSList.append('      exit 1\n')
+            PBSList.append('   endif\n')
+            PBSList.append('   touch .failed\n')
+            PBSList.append('   exit 1\n')
+            PBSList.append('else\n')           
+            PBSList.append("   %s -s running -m 'populating Apollo Database'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('   if ($status) then\n')
+            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('       touch .failed\n')
+            PBSList.append('      exit 1\n')
+            PBSList.append('   endif\n')
+            PBSList.append('endif\n')
+            PBSList.append('%s\n'%(simConf['dbCommand'].replace('<<ID>>',str(id))))
+            PBSList.append('if ($status) then\n')
+            PBSList.append('   %s -s failed -m "Database upload faled"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('   if ($status) then\n')
+            PBSList.append('      echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('      touch .failed\n')
+            PBSList.append('      exit 1\n')
+            PBSList.append('   endif\n')
+            PBSList.append('   touch .failed\n')
+            PBSList.append('   exit 1\n')
+            PBSList.append('else\n')           
+            PBSList.append("   %s -s completed -m 'simulation completed'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('   if ($status) then\n')
+            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('       touch .failed\n')
+            PBSList.append('      exit 1\n')
+            PBSList.append('   endif\n')
+            PBSList.append('endif\n')
+	    PBSList.append('touch .completed')
             self.logger.update("SSH_CREATEPBSRUN_SUCCESS")
         except Exception as e:
             self.logger.update("SSH_CREATEPBSRUN_FAILED",message=str(e))
+            print str(e)
             raise e
         
         return ("").join(PBSList)
@@ -531,7 +553,6 @@ class SSHConn:
 	    import random
 	    randStr = "%d"%random.randint(0,100000)
             LocalList = []
-            print "!!!! ID = %s"%(str(id))
             ### This is language to only allow one run to go at a time.
             LocalList.append('#!/bin/csh\n')
             LocalList.append("echo QUEUED `date` > starttime\n")
@@ -561,7 +582,6 @@ class SSHConn:
             raise e
 
         return ("").join(LocalList)
-        
             
 def jsonDict2Obj(d):
     if isinstance(d, list):
@@ -588,13 +608,15 @@ def main():
     #sys.exit()
     ### Test on Blacklight
     logger = Log(logFileName_='./test.log')
-    for i in range(0,2):
+    for i in range(0,1):
         tempId = random.randint(0,100000)
         #if i < 2:
         connections[tempId] = SSHConn(logger,machineName_='fe-sandbox.psc.edu',debug_=True)
+        print connections[tempId].createPBSRunScript(simWS.configuration['simulators']['fred_V1_i'],1012)
+
         #else:
         #    connections[tempId] = SSHConn(logger,machineName_='unicron.psc.edu',debug_=True)
-        
+        '''
         connections[tempId]._mkdir(simWS.configuration['simulators']['test']['runDirPrefix']+"."+str(tempId))
         pbsId = connections[tempId].submitJob(tempId,simId="Test_ID",simulator="test",size="debug")
 
@@ -609,7 +631,7 @@ def main():
             break
         print "For ----------"
         time.sleep(1)
-
+'''
 ### Main Hook
 
 if __name__=="__main__":
