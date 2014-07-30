@@ -54,6 +54,9 @@ def monitorConnectionForFailedOrCompleted(connection,remoteScratch,runId,apolloD
         if failVal != "X":
             errCommand = 'cat %s/%s/run.stderr'%(connection._remoteDir,remoteScratch)
             failOutput = connection._executeCommand(errCommand)
+	    if failOutput is None:
+		errCommand = 'cat %s/%s/apollo_err.txt'%(connection._remoteDir,remoteScratch)
+	        failOutput = connection._executeCommand(errCommand)
             apolloDB.setRunStatus(runId,'failed',str(failOutput.replace('\"','')))
             break
         if compVal != "X":
@@ -140,7 +143,9 @@ class SimulatorWebService(SimulatorService_v2_0_2):
              
         try:
             randID = random.randint(0,100000)
-            tempDirName = "%s/fred.tmp.%d"%(simWS.configuration["local"]["scratchDir"],randID)
+            tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
+				      simConf['runDirPrefix'],
+				      randID)
             os.mkdir(tempDirName)
             self.logger.update("SVC_TMPDIR_SUCCESS",message="%s"%tempDirName)
             apolloDB.setRunStatus(runId,"staging","temporary directory created on remote system")
@@ -159,6 +164,7 @@ class SimulatorWebService(SimulatorService_v2_0_2):
             simulatorInputFileDict = apolloDB.getSimulationInputFilesForRunId(runId,translatorServiceId,simulatorServiceId)
             for fileName,content in simulatorInputFileDict.items():
                 with open(tempDirName+"/"+fileName,"wb") as f:
+		    print "FileNAme = " + fileName
                     f.write("%s"%content)
 
             self.logger.update("SVC_FILELIST_RECIEVED")
@@ -171,7 +177,7 @@ class SimulatorWebService(SimulatorService_v2_0_2):
             return response
 
         try:
-            remoteScr = 'fred.tmp.%s'%str(randID)
+            remoteScr = '%s.%s'%(simConf['runDirPrefix'],str(randID))
             conn._mkdir(remoteScr)
  
             for fileName,content in simulatorInputFileDict.items():
