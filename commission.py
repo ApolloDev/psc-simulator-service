@@ -250,7 +250,7 @@ class SSHConn:
             self.logger.update("SSH_SENDFILE_FAILED",message="%s->%s: %s"%(localFileName,remoteFileName,str(e)))
             raise 
 
-    def submitJob(self,tmpId,simId,simulator="fred",size="medium",user=None):
+    def submitJob(self,tmpId,simId,simulator="fred",size="medium",user="NOONE"):
         
         idString = "BAD"
 
@@ -309,11 +309,13 @@ class SSHConn:
             raise e
          
         return 1
-    def _submitPBSJob(self,tmpId,simId,simConf,size="small",user=None):
+    def _submitPBSJob(self,tmpId,simId,simConf,size="small",user="NOONE"):
         ## Create starttime file
         try:
+	    print "HERE"
             with open(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),"wb") as f:
                 f.write("%s"%self.createPBSRunScript(simConf,simId,size=size,user=user))
+	    print "NERE2"
             self.sendFile(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),simConf['runDirPrefix']+"."+str(tmpId)+"/submit.pbs")
             self.sendFile('/usr/local/packages/Simulator-WS-v2.0.2/templates/starttime',simConf['runDirPrefix']+"."+str(tmpId) + '/starttime')
             self._startTiming = True
@@ -330,13 +332,16 @@ class SSHConn:
                 remote_command += 'cd %s.%s;'%(simConf['runDirPrefix'],str(tmpId))
 
             remote_command += self._configuration['submitCommand'] + " submit.pbs"
-            
-            returnVal = self._executeCommand(remote_command)
+	    tryCount = 0
+	    returnVal = None
+            while returnVal is None: 
+		tryCount += 1
+            	returnVal = self._executeCommand(remote_command)
             idString = ""
             
             try:
                 idString = returnVal.split('.')[0]
-                self.logger.update("SSH_PBS_ID_SUCCESS")
+                self.logger.update("SSH_PBS_ID_SUCCESS",message="After %d tries"%tryCount)
             except Exception as e:
                 self.logger.update("SSH_PBS_ID_FAILED",message="%s"%str(e))
                 raise e
@@ -480,9 +485,15 @@ class SSHConn:
             elif status == "COMPLETED":
                 response = 'The run completed successfully at %s'%(date)
 	return (status,response)
-
-    def createPBSRunScript(self,simConf,id,size="small",user=None):
+    def createPBSRunScript(self,simConf,id,size="small",user="NOONE"):
         try:
+	    import random
+            dbString = "-H {0} -D {1} -U {2} -P {3} ".format(self._localConfiguration['apolloDBHost'],
+							     self._localConfiguration['apolloDBName'],
+	                                                     self._localConfiguration['apolloDBUser'],
+	                                                     self._localConfiguration['apolloDBPword'])
+	    tempId = random.randint(0,100000)
+	    print str(tempId)
             PBSList = []
             PBSList.append('#!/bin/csh\n')
             PBSList.append('#PBS %s\n'%(self._configuration[size]))
@@ -496,7 +507,7 @@ class SSHConn:
                 PBSList.append('%s\n'%simConf['moduleCommand'])
 	    PBSList.append('setenv APOLLO_HOME %s\n'%self._configuration['apolloPyLoc'])
             PBSList.append('cd $PBS_O_WORKDIR\n')
-            PBSList.append('%s -s running -m "simulation started"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('%s %s -s running -m "simulation started"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
             PBSList.append('if ($status) then\n')
             PBSList.append('   echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
             PBSList.append('   touch .failed\n')
@@ -504,10 +515,10 @@ class SSHConn:
             PBSList.append('endif\n')
             PBSList.append('%s\n'%self._configuration['getID'])
 	    PBSList.append('%s\n'%simConf['preProcessCommand'])
-            PBSList.append('(%s %s > run.stdout) >& run.stderr\n'%(simConf['runCommand'].replace("<<ID>>",str(id)),simConf[size]))
+            PBSList.append('(%s %s > run.stdout) >& run.stderr\n'%(simConf['runCommand'].replace("<<tID>>","%s_%s"%(str(tempId),str(id))).replace("<<ID>>",str(id)),simConf[size]))
 	    PBSList.append('set errCont = `stat -c %s run.stderr`\n')
             PBSList.append('if ($status || $errCont != "0") then\n')
-            PBSList.append('   %s -s failed -m "The simulation failed during running"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('   %s %s -s failed -m "The simulation failed during running"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
             PBSList.append('   if ($status) then\n')
             PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
             PBSList.append('       touch .failed\n')
@@ -516,17 +527,17 @@ class SSHConn:
             PBSList.append('   touch .failed\n')
             PBSList.append('   exit 1\n')
             PBSList.append('else\n')           
-            PBSList.append("   %s -s running -m 'populating Apollo Database'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append("   %s %s -s running -m 'populating Apollo Database'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
             PBSList.append('   if ($status) then\n')
             PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
             PBSList.append('       touch .failed\n')
             PBSList.append('      exit 1\n')
             PBSList.append('   endif\n')
             PBSList.append('endif\n')
-            PBSList.append('(%s > run.stdout) > & run.stderr\n'%(simConf['dbCommand'].replace('<<ID>>',str(id))))
+            PBSList.append('(%s %s> run.stdout) > & run.stderr\n'%(simConf['dbCommand'].replace("<<tID>>","%s_%s"%(str(tempId),str(id))).replace('<<ID>>',str(id)),dbString))
             PBSList.append('set errCont = `stat -c %s run.stderr`\n')
             PBSList.append('if ($status || $errCont != "0") then\n')
-            PBSList.append('   %s -s failed -m "Database upload failed"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append('   %s %s -s failed -m "Database upload failed"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
             PBSList.append('   if ($status) then\n')
             PBSList.append('      echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
             PBSList.append('      touch .failed\n')
@@ -535,7 +546,7 @@ class SSHConn:
             PBSList.append('   touch .failed\n')
             PBSList.append('   exit 1\n')
             PBSList.append('else\n')           
-            PBSList.append("   %s -s completed -m 'simulation completed'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id))))
+            PBSList.append("   %s %s -s completed -m 'simulation completed'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
             PBSList.append('   if ($status) then\n')
             PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
             PBSList.append('       touch .failed\n')
@@ -619,9 +630,8 @@ def main():
 
         #else:
         #    connections[tempId] = SSHConn(logger,machineName_='unicron.psc.edu',debug_=True)
-        '''
         connections[tempId]._mkdir(simWS.configuration['simulators']['test']['runDirPrefix']+"."+str(tempId))
-        pbsId = connections[tempId].submitJob(tempId,simId="Test_ID",simulator="test",size="debug")
+        jtype,pbsId = connections[tempId].submitJob(tempId,simId="Test_ID",simulator="test",size="debug")
 
     while True: 
         completed = True
@@ -634,7 +644,6 @@ def main():
             break
         print "For ----------"
         time.sleep(1)
-'''
 ### Main Hook
 
 if __name__=="__main__":

@@ -1,1 +1,1 @@
-wsdl2py --complexType --lazy simulatorservice202.wsdl
+wsdl2py --complexType --lazy simulatorservice300.wsdl

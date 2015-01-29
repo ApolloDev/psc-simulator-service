@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <wsdl:definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-	xmlns:tns="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/"
+	xmlns:tns="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/"
 	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-	name="SimulatorService_v2.0.2" targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/">
+	name="SimulatorService_v3.0.0" targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/">
 	<wsdl:types>
-		<xsd:schema targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/"
-			xmlns:apollo="http://types.apollo.pitt.edu/v2_0_2/">
+		<xsd:schema targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/"
+			xmlns:sst="http://simulator-service-types.apollo.pitt.edu/v3_0_0/"
+            xmlns:services="http://services-common.apollo.pitt.edu/v3_0_0/">
 
-			<xsd:import schemaLocation="http://research.rods.pitt.edu/apollo-types_2.0.2.xsd"
-				namespace="http://types.apollo.pitt.edu/v2_0_2/">
+			<xsd:import schemaLocation="http://gaia.pha.psc.edu/simulator_service_3.0.0.xsd"
+				namespace="http://simulator-service-types.apollo.pitt.edu/v3_0_0/">
+			</xsd:import>
+            <xsd:import schemaLocation="http://gaia.pha.psc.edu/services-common_3.0.0.xsd"
+				namespace="http://services-common.apollo.pitt.edu/v3_0_0/">
 			</xsd:import>
 			<xsd:element name="runSimulation">
 
@@ -23,7 +27,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="methodCallStatus" type="apollo:MethodCallStatus">
+						<xsd:element name="methodCallStatus" type="services:MethodCallStatus">
 						</xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
@@ -41,7 +45,7 @@
 				<xsd:complexType>
 					<xsd:sequence>
 						<xsd:element name="getLocationsSupportedBySimulatorResult"
-							type="apollo:GetScenarioLocationCodesSupportedBySimulatorResult"
+							type="sst:GetScenarioLocationCodesSupportedBySimulatorResult"
 							maxOccurs="1" minOccurs="1">
 						</xsd:element>
 					</xsd:sequence>
@@ -51,7 +55,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="runSimulationsMessage" type="apollo:RunSimulationsMessage">
+						<xsd:element name="runSimulationsMessage" type="sst:RunSimulationsMessage">
 						</xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
@@ -60,7 +64,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="runSimulationsResult" type="apollo:RunSimulationsResult"></xsd:element>
+						<xsd:element name="runSimulationsResult" type="sst:RunSimulationsResult"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -68,7 +72,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="runId" type="apollo:RunIdentification"></xsd:element>
+						<xsd:element name="runId" type="services:RunIdentification"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -77,7 +81,7 @@
 				<xsd:complexType>
 					<xsd:sequence>
 						<xsd:element name="configurationFile"
-							type="apollo:GetConfigurationFileForSimulationResult"></xsd:element>
+							type="sst:GetConfigurationFileForSimulationResult"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -94,7 +98,7 @@
 				<xsd:complexType>
 					<xsd:sequence>
 						<xsd:element name="getPopulationAndEnvironmentCensusResult"
-							type="apollo:GetPopulationAndEnvironmentCensusResult"></xsd:element>
+							type="sst:GetPopulationAndEnvironmentCensusResult"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -102,7 +106,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="terminateRunRequest" type="apollo:TerminateRunRequest"></xsd:element>
+						<xsd:element name="terminateRunRequest" type="services:TerminateRunRequest"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -110,7 +114,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="terminateRunResult" type="apollo:TerminteRunResult"></xsd:element>
+						<xsd:element name="terminateRunResult" type="services:TerminteRunResult"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -190,7 +194,7 @@
 			transport="http://schemas.xmlsoap.org/soap/http" />
 		<wsdl:operation name="runSimulation">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/runSimulation" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/runSimulation" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -200,7 +204,7 @@
 		</wsdl:operation>
 		<wsdl:operation name="getScenarioLocationCodesSupportedBySimulator">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/getScenarioLocationCodesSupportedBySimulator" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/getScenarioLocationCodesSupportedBySimulator" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -210,7 +214,7 @@
 		</wsdl:operation>
 		<wsdl:operation name="runSimulations">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/runSimulations" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/runSimulations" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -221,7 +225,7 @@
 
 		<wsdl:operation name="getPopulationAndEnvironmentCensus">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/getPopulationAndEnvironmentCensus" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/getPopulationAndEnvironmentCensus" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -231,7 +235,7 @@
 		</wsdl:operation>
 		<wsdl:operation name="terminateRun">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v2_0_2/terminateRun" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/terminateRun" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -240,7 +244,7 @@
 			</wsdl:output>
 		</wsdl:operation>
 	</wsdl:binding>
-	<wsdl:service name="SimulatorService_v2.0.2">
+	<wsdl:service name="SimulatorService_v3.0.0">
 		<wsdl:port binding="tns:SimulatorServiceBinding" name="SimulatorServiceEndpoint">
 			<soap:address
 				location="http://localhost:8080/simulatorservice202/services/simulatorservice" />

@@ -73,8 +73,8 @@ ServiceCodes = {
     'DB_POP_ZERO':164,
     'DB_QUERY_FAILED':165,
     'DB_QUERY_NO_RESULTS':166,
-    'DB_QUERY_MORE_THAN_ONE':167,
-    'DB_STATUS_ERROR':168
+    'DB_QUERY_MORE_THAN_ONE':171,
+    'DB_STATUS_ERROR':172
     }
 
 ServiceDescriptions = {
@@ -266,20 +266,21 @@ class Log:
         if thisServiceCode == ServiceCodes['UNKNOWN']:
             print "UNKNOWN for %s"%status
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
         thisMessage = ""
         
         if message is None:
-            thisMessage = "%s %s Code: %d(%s), %s\n"%(timestamp,self.moniker,
-                                                      thisServiceCode,
-                                                      ServiceTypes[thisServiceCode],
-                                                      ServiceDescriptions[thisServiceCode])
+            thisMessage = "%s Code: %d(%s), %s\n"%(self.moniker,
+                                                   thisServiceCode,
+                                                   ServiceTypes[thisServiceCode],
+                                                   ServiceDescriptions[thisServiceCode])
         else:
-            thisMessage = "%s %s Code: %d(%s), %s message: %s\n"%(timestamp,self.moniker,
-                                                                  thisServiceCode,
-                                                                  ServiceTypes[thisServiceCode],
-                                                                  ServiceDescriptions[thisServiceCode],
-                                                                  message)
-        self.logFile.write("%s"%thisMessage)
+            thisMessage = "%s Code: %d(%s), %s message: %s\n"%(self.moniker,
+                                                               thisServiceCode,
+                                                               ServiceTypes[thisServiceCode],
+                                                               ServiceDescriptions[thisServiceCode],
+                                                               message)
+        self.logFile.write("%s:%s"%(timestamp,thisMessage))
         self.lastMessage = (status,thisMessage)
         
         if not self.buffered: self.logFile.flush()

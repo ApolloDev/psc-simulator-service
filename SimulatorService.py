@@ -22,10 +22,10 @@ This is an example GenericEpidemicModelService implementation.
 '''
 
 import paths
-from SimulatorService_v2_0_2_server import SimulatorService_v2_0_2
+from SimulatorService_v3_0_0_server import SimulatorService_v3_0_0
 from ZSI import *
 from ZSI.ServiceContainer import AsServer
-from SimulatorService_v2_0_2_types import *
+from SimulatorService_v3_0_0_types import *
 from ApolloFactory import *
 from ApolloUtils import *
 import os,sys
@@ -51,20 +51,22 @@ def monitorConnectionForFailedOrCompleted(connection,remoteScratch,runId,apolloD
         compCommand = 'echo -n "X"; if ( -e %s/%s/.completed ) echo "yes"'%(connection._remoteDir,remoteScratch)
         failVal = connection._executeCommand(failCommand)
         compVal = connection._executeCommand(compCommand)
-        if failVal != "X":
+        if failVal == "Xyes":
             errCommand = 'cat %s/%s/run.stderr'%(connection._remoteDir,remoteScratch)
             failOutput = connection._executeCommand(errCommand)
 	    if failOutput is None:
 		errCommand = 'cat %s/%s/apollo_err.txt'%(connection._remoteDir,remoteScratch)
 	        failOutput = connection._executeCommand(errCommand)
+		if failOutput is None:
+			failOutput = "No additional information on failure."
             apolloDB.setRunStatus(runId,'failed',str(failOutput.replace('\"','')))
             break
-        if compVal != "X":
+        if compVal == "Xyes":
             break
         time.sleep(3)
         
         
-class SimulatorWebService(SimulatorService_v2_0_2):
+class SimulatorWebService(SimulatorService_v3_0_0):
     _wsdl = "".join(open(simWS.configuration['local']['wsdlFile']).readlines())
         
     factory = ApolloFactory()
@@ -75,11 +77,15 @@ class SimulatorWebService(SimulatorService_v2_0_2):
     # this method runs an epidemic model
     def soap_runSimulation(self, ps, **kw):
         try:
-            apolloDB = ApolloDB(dbname_="test")
+            apolloDB = ApolloDB(dbname_=simWS.configuration['local']['apolloDBName'],
+                                host_=simWS.configuration['local']['apolloDBHost'],
+                                user_=simWS.configuration['local']['apolloDBUser'],
+                                password_=simWS.configuration['local']['apolloDBPword'])
             apolloDB.connect()
-            response = SimulatorService_v2_0_2.soap_runSimulation(self, ps, **kw)
+            response = SimulatorService_v3_0_0.soap_runSimulation(self, ps, **kw)
 
             #initialize the return information
+	    print str(dir(response[1]))
 	    response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
             response[1]._methodCallStatus._status = "staging"
             response[1]._methodCallStatus._message = "This is the starting message"
@@ -90,6 +96,7 @@ class SimulatorWebService(SimulatorService_v2_0_2):
             self.logger.update("SVC_APL_RESQ_RECV")
 
         except Exception as e:
+	    print str(e)
             self.logger.update("SVC_APL_RESQ_RECV_FAILED", message="%s" % str(e))
 	    raise e
         
@@ -142,7 +149,7 @@ class SimulatorWebService(SimulatorService_v2_0_2):
         # Make a random directory name so that multiple calls can be made
              
         try:
-            randID = random.randint(0,100000)
+            randID = random.randint(0,1000000000)
             tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
 				      simConf['runDirPrefix'],
 				      randID)
@@ -164,7 +171,6 @@ class SimulatorWebService(SimulatorService_v2_0_2):
             simulatorInputFileDict = apolloDB.getSimulationInputFilesForRunId(runId,translatorServiceId,simulatorServiceId)
             for fileName,content in simulatorInputFileDict.items():
                 with open(tempDirName+"/"+fileName,"wb") as f:
-		    print "FileNAme = " + fileName
                     f.write("%s"%content)
 
             self.logger.update("SVC_FILELIST_RECIEVED")
