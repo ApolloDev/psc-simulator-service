@@ -9,17 +9,16 @@
 		namespace="http://services-common.apollo.pitt.edu/v3_0_0/">
 	</import>
 
-	<import schemaLocation="http://gaia.pha.psc.edu/apollo-types_3.0.0.xsd" namespace="http://types.apollo.pitt.edu/v3_0_0/"></import>
+	<import schemaLocation="apollo-types_3.0.0.xsd" namespace="http://types.apollo.pitt.edu/v3_0_0/"></import>
 
-	<complexType name="RunSimulationsMessage">
+	
+	<complexType name="RunSimulationResult">
 		<sequence>
-			<element name="batchConfigurationFile" type="anyURI" />
-			<element name="acceptCachedResults" type="boolean" />
-			<element name="softwareIdentification" type="common:SoftwareIdentification" />
+			<element name="runId" type="common:RunIdentification" />
 		</sequence>
 	</complexType>
-
-    <complexType name="GetScenarioLocationCodesSupportedBySimulatorResult">
+	
+	<complexType name="GetScenarioLocationCodesSupportedBySimulatorResult">
 		<sequence>
 			<element name="methodCallStatus" type="common:MethodCallStatus"
 				maxOccurs="1" minOccurs="1">
@@ -29,8 +28,8 @@
 			</element>
 		</sequence>
 	</complexType>
-    
-        	<complexType name="GetPopulationAndEnvironmentCensusResult">
+
+	<complexType name="GetPopulationAndEnvironmentCensusResult">
 		<sequence>
 			<element name="methodCallStatus" type="common:MethodCallStatus"
 				maxOccurs="1" minOccurs="1">
@@ -40,8 +39,8 @@
 			</element>
 		</sequence>
 	</complexType>
-    
-    	<complexType name="GetConfigurationFileForSimulationResult">
+
+	<complexType name="GetConfigurationFileForSimulationResult">
 		<sequence>
 			<element name="methodCallStatus" type="common:MethodCallStatus"
 				maxOccurs="1" minOccurs="1">
@@ -52,13 +51,6 @@
 			<element name="configurationFileInHtmlFormat" type="string"
 				maxOccurs="1" minOccurs="0">
 			</element>
-		</sequence>
-	</complexType>
-
-	<complexType name="RunSimulationsResult">
-		<sequence>
-			<element name="completedFile" type="anyURI" />
-			<element name="runId" type="common:RunIdentification" />
 		</sequence>
 	</complexType>
 

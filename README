@@ -18,5 +18,3 @@ Start the GenericEpidemicModelService:
 	
 Run the example client:
 	python SimulatorServiceClient.py
-
-just checking if I can push to the repository.

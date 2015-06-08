@@ -6,16 +6,15 @@
 	<wsdl:types>
 		<xsd:schema targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/"
 			xmlns:sst="http://simulator-service-types.apollo.pitt.edu/v3_0_0/"
-            xmlns:services="http://services-common.apollo.pitt.edu/v3_0_0/">
+			xmlns:services="http://services-common.apollo.pitt.edu/v3_0_0/">
 
-			<xsd:import schemaLocation="http://gaia.pha.psc.edu/simulator_service_3.0.0.xsd"
+			<xsd:import schemaLocation="http://research.rods.pitt.edu/apollo-schemas/simulator-service_3.0.0.xsd"
 				namespace="http://simulator-service-types.apollo.pitt.edu/v3_0_0/">
 			</xsd:import>
-            <xsd:import schemaLocation="http://gaia.pha.psc.edu/services-common_3.0.0.xsd"
+			<xsd:import schemaLocation="http://research.rods.pitt.edu/apollo-schemas/services-common_3.0.0.xsd"
 				namespace="http://services-common.apollo.pitt.edu/v3_0_0/">
 			</xsd:import>
 			<xsd:element name="runSimulation">
-
 				<xsd:complexType>
 					<xsd:sequence>
 						<xsd:element name="simulationRunId" type="xsd:positiveInteger">
@@ -32,7 +31,7 @@
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
-		
+
 			<xsd:element name="getScenarioLocationCodesSupportedBySimulator">
 
 				<xsd:complexType>
@@ -52,11 +51,9 @@
 				</xsd:complexType>
 			</xsd:element>
 			<xsd:element name="runSimulations">
-
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="runSimulationsMessage" type="sst:RunSimulationsMessage">
-						</xsd:element>
+						<xsd:element name="simulationRunId" type="xsd:positiveInteger"/>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
@@ -64,7 +61,7 @@
 
 				<xsd:complexType>
 					<xsd:sequence>
-						<xsd:element name="runSimulationsResult" type="sst:RunSimulationsResult"></xsd:element>
+						<xsd:element name="runSimulationsResult" type="services:RunResult"></xsd:element>
 					</xsd:sequence>
 				</xsd:complexType>
 			</xsd:element>
