@@ -1,4 +1,5 @@
 # Copyright 2012 University of Pittsburgh
+# Copyright 2012 Pittsburgh Supercomputing Center
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License.  You may obtain a copy of
@@ -25,16 +26,17 @@ import inspect
 
 class ApolloFactory:
     def new_RunSimulationMessage(self):
+        print "Trying to create this"
         mess = ns1.RunSimulationMessage_Def(None).pyclass()
-        mess._authentication = ns1.Authentication_Def(None).pyclass()
-        mess._simulatorIdentification = ns1.SoftwareIdentification_Def(None).pyclass()
-        mess._simulatorTimeSpecification = ns1.SimulatorTimeSpecification_Def(None).pyclass()
-        mess._infectiousDiseaseScenario = ns1.InfectiousDiseaseScenario_Def(None).pyclass()
+        mess._authentication = ns2.Authentication_Def(None).pyclass()
+        mess._simulatorIdentification = ns2.SoftwareIdentification_Def(None).pyclass()
+        mess._simulatorTimeSpecification = ns3.SimulatorTimeSpecification_Def(None).pyclass()
+        mess._infectiousDiseaseScenario = ns3.InfectiousDiseaseScenario_Def(None).pyclass()
         return mess
 
     def new_InfectiousDiseaseScenario(self):
-        ifdscen = ns1.InfectiousDiseaseScenario_Def(None).pyclass()
-        ifdscen._location = ns1.Location_Def(None).pyclass()
+        ifdscen = ns3.InfectiousDiseaseScenario_Def(None).pyclass()
+        ifdscen._location = ns3.Location_Def(None).pyclass()
         ifdscen._infections = []
         #ns1.Infection_Def(None).pyclass()
         ifdscen._diseases = []
@@ -144,10 +146,17 @@ class ApolloFactory:
         return psd
 
     def new_MethodCallStatus(self):
-        run_status = ns2.MethodCallStatus_Def(None).pyclass()
-        run_status._status = ns2.MethodCallStatusEnum_Def(None).pyclass()
-	run_status._status = "unknown"
+        run_status = ns2.MethodCallStatus_Def(ZSI.TCcompound.ComplexType).pyclass()
+        run_status._status = "failed"#ns2.MethodCallStatusEnum_Def(None).pyclass()
+        run_status._message = "unknown"
         return run_status
+    
+    
+    def new_RunResult(self):
+        run_result = ns2.RunResult_Def(None).pyclass()
+        run_result._runId = ns2.RunIdentification_Def(None).pyclass()
+        run_result._methodCallStatus = self.new_MethodCallStatus()
+        return run_result
     
     def new_SupportedPopulationLocation(self):
         spl = ns1.SupportedPopulationLocation_Def(None).pyclass()
@@ -156,6 +165,8 @@ class ApolloFactory:
     
     def new_PopulationDiseaseState(self):
         return ns1.PopulationDiseaseState_Def(None).pyclass()
+    
+        
         
         
         

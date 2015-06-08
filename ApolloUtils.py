@@ -1,4 +1,5 @@
 # Copyright 2012 University of Pittsburgh
+# Copyright 2012 Pittsburgh Supercomputing Center
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License.  You may obtain a copy of
@@ -19,7 +20,7 @@ Created on Nov 29, 2012
 @author: John Levander
 '''
 
-from SimulatorService_v2_0_2_types import *
+from SimulatorService_v3_0_0_types import *
 import logging
 
 class ApolloUtils:

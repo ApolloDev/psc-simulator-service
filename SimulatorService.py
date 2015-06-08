@@ -1,5 +1,6 @@
 #!/usr/bin/env python 
 # Copyright 2012 University of Pittsburgh
+# Copyright 2012 Pittsburgh Supercomputing Center
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License.  You may obtain a copy of
@@ -15,8 +16,6 @@
 #from SimulatorService_v2_0_2_services import runSimulationRequest
 '''
 Created on Nov 27, 2012
-
-This is an example GenericEpidemicModelService implementation.
 
 @author: John Levander, Shawn Brown
 '''
@@ -40,32 +39,52 @@ from logger import Log
 from commission import SSHConn
 import json
 from apollo import ApolloDB
+from pbsBatch import PBSBatch
 
 connections = {} 
+print sys.getrecursionlimit()
+def generate_message(statsDict):
+    return "{0} completed, {1} running, {2} failed, {3} queued of {4} total jobs".format(statsDict['completed'],
+                                                                                        statsDict['running'],
+                                                                                        statsDict['failed'],
+                                                                                        statsDict['queued'],
+                                                                                        statsDict['total'])
 
-def monitorConnectionForFailedOrCompleted(connection,remoteScratch,runId,apolloDB):
-    ### This function is run in a thread for each job that is submitted so that we can see
-    ### if there are errors occuring from the run on the remote machine.
-    while True:
-        failCommand = 'echo -n "X"; if ( -e %s/%s/.failed ) echo "yes"'%(connection._remoteDir,remoteScratch)
-        compCommand = 'echo -n "X"; if ( -e %s/%s/.completed ) echo "yes"'%(connection._remoteDir,remoteScratch)
-        failVal = connection._executeCommand(failCommand)
-        compVal = connection._executeCommand(compCommand)
-        if failVal == "Xyes":
-            errCommand = 'cat %s/%s/run.stderr'%(connection._remoteDir,remoteScratch)
-            failOutput = connection._executeCommand(errCommand)
-	    if failOutput is None:
-		errCommand = 'cat %s/%s/apollo_err.txt'%(connection._remoteDir,remoteScratch)
-	        failOutput = connection._executeCommand(errCommand)
-		if failOutput is None:
-			failOutput = "No additional information on failure."
-            apolloDB.setRunStatus(runId,'failed',str(failOutput.replace('\"','')))
-            break
-        if compVal == "Xyes":
-            break
-        time.sleep(3)
-        
-        
+def monitorBatchStatus(batchId,apolloDB):
+	while True:
+		runsToCheck = apolloDB.getRunsFromRunId(batchId)
+		runStatus = {}
+		overallStatus = "queued"
+		message = "batch of runs is queued"
+		
+		for runId in runsToCheck:
+			runStatus[runId] = apolloDB.getRunStatus(runId)
+		statsDict = {'total':0,'completed':0,'running':0,'queued':0,'failed':0}
+
+    		for runId,status in runStatus.items():
+        		if status[0] not in statsDict.keys():
+            			statsDict['queued'] += 1
+        		else:
+            			statsDict[status[0]] += 1
+        		statsDict['total'] += 1
+
+   	 	if statsDict['queued'] != statsDict['total']:
+        	# this means that something has already happened
+        		if (statsDict['completed'] + statsDict['failed'])== statsDict['total']:
+            			if statsDict['failed']:
+                			overallStatus = "failed"
+            			else:
+                			overallStatus = "completed"
+        		else:
+            			overallStatus = "running"
+
+    		message = generate_message(statsDict)
+    
+    		apolloDB.setRunStatus(batchId,overallStatus,message)
+        	if overallStatus == "completed":
+            		break
+	    
+        	time.sleep(5)
 class SimulatorWebService(SimulatorService_v3_0_0):
     _wsdl = "".join(open(simWS.configuration['local']['wsdlFile']).readlines())
         
@@ -74,8 +93,160 @@ class SimulatorWebService(SimulatorService_v3_0_0):
     logger = Log(simWS.configuration['local']['logFile'])
     logger.start()
     
+    def soap_runSimulations(self,ps, **kw):
+        
+        
+        try:
+            ### Connect to the Apollo Database
+            apolloDB = ApolloDB(dbname_=simWS.configuration['local']['apolloDBName'],
+                                host_=simWS.configuration['local']['apolloDBHost'],
+                                user_=simWS.configuration['local']['apolloDBUser'],
+                                password_=simWS.configuration['local']['apolloDBPword'])
+            apolloDB.connect()
+            
+            #initialize the return information
+            response = SimulatorService_v3_0_0.soap_runSimulations(self, ps, **kw)
+            response[1]._runSimulationsResult = self.factory.new_RunResult()
+            response[1]._runSimulationsResult._runId = response[0]._simulationRunId
+            response[1]._runSimulationsResult._methodCallStatus = self.factory.new_MethodCallStatus()
+            
+            response[1]._runSimulationsResult._methodCallStatus._status = "staging"
+            response[1]._runSimulationsResult._methodCallStatus._message = "This is the starting message"
+            #get the runId for this message
+            init_runId = response[0]._simulationRunId
+            apolloDB.setRunStatus(init_runId,'initializing',"Received message from Apollo")
+            self.logger.update("SVC_APL_RESQ_RECV")
+
+        except Exception as e:
+            print str(e)
+            self.logger.update("SVC_APL_RESQ_RECV_FAILED", message="%s" % str(e))
+            raise e
+    
+        try:
+            ### get the software information from the message
+            (name,dev,ver) = apolloDB.getSoftwareIdentificationForRunId(init_runId)
+            idPrefix = "%s_%s_%s_"%(dev,name,ver)
+        
+            self.logger.update("SVC_APL_TRANS_RECV",message="%s"%str(idPrefix))
+        
+        except Exception as e:
+            self.logger.update("SVC_APL_TRANS_FAILED",message="%s"%str(e))
+            apolloDB.setRunStatus(init_runId,"failed",self.logger.pollStatus()[1])
+            response[1]._runSimulationsResult._methodCallStatus._status = "failed"
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)
+            return response
+        
+        # Get the pertinent user information from the runSimulation message from the database
+        try:
+            jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(init_runId,"run_simulation_message.json",
+                                                                  0,1,"TEXT","RUN_SIMULATION_MESSAGE")
+            jsonDict = json.loads(jsonStr)
+            user = jsonDict['authentication']['requesterId']
+            
+        except Exception as e:
+            apolloDB.setRunStatus(init_runId,"failed",str(e))
+            response[1]._runSimulationsResult._methodCallStatus._status = 'failed'
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)
+            print str(e)
+            raise e
+        
+        try:
+            confId = simWS.configuration['simulators']['mappings'][idPrefix]
+            simConf = simWS.configuration['simulators'][confId]
+            conn = SSHConn(self.logger,machineName_=simConf['defaultMachine'][0])
+            self.logger.update("SRV_SSH_CONN_SUCCESS",message="%s"%str(idPrefix))
+            apolloDB.setRunStatus(init_runId,"staging",message="ssh connection established")
+        except Exception as e:
+            print str(e)
+            self.logger.update("SVC_SSH_CONN_FAILED",message="%s"%str(e))
+            apolloDB.setRunStatus(init_runId,"failed",message="%s"%self.logger.pollStatus()[1])
+            response[1]._runSimulationsResult._methodCallStatus._status = 'failed'
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)
+            return response
+
+        
+        # Make a random directory name so that multiple calls can be made     
+        try:
+            randID = random.randint(0,1000000000)
+            tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
+                      simConf['runDirPrefix'],
+                      randID)
+            os.mkdir(tempDirName)
+            self.logger.update("SVC_TMPDIR_SUCCESS",message="%s"%tempDirName)
+            apolloDB.setRunStatus(init_runId,"staging","temporary directory created on local system")
+        except Exception as e:
+            self.logger.update("SVC_TMPDIR_FAILED",message="%s"%str(e))
+            apolloDB.setRunStatus(init_runId,"failed",message="%s"%self.logger.pollStatus()[1])
+            response[1]._runSimulationsResult._methodCallStatus._status = 'failed'
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)
+            return response
+
+        # Create a PBS Batch object from the runId
+        try:
+            pbsBatch = PBSBatch(init_runId,
+                                nodes_=conn._configuration['mediumBatch'],
+                                ppn_=conn._configuration['ppn'],
+                                procsPerRun_=simConf['mediumPPR'],
+                                threadsPerRun_=simConf['mediumTPR'],
+                                apollodb_=apolloDB,
+                                localCnf_=simWS.configuration['local'],
+                                machineCnf_=conn._configuration,
+                                simulatorCnf_=simConf)
+            pbsBatch.populate_from_apollo_runId()
+            pbsBatch.create_zipFile("{0}/job_{1}.zip".format(tempDirName,init_runId))
+            pbsBatch.createRunScript("{0}/batch_run{1}.py".format(tempDirName,init_runId))
+            self.logger.update("SVC_FILELIST_RECIEVED")
+            apolloDB.setRunStatus(init_runId,"staging","run files successfully retrieved from the database")
+        except Exception as e:
+            self.logger.update("SVC_FILELIST_FAILED",message="%s"%str(e))
+            apolloDB.setRunStatus(init_runId,"failed","%s"%self.logger.pollStatus()[1])
+            response[1]._runSimulationsResult._methodCallStatus._status = 'failed'
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)
+            return response
+        
+        # Send file to remote machine
+        try:
+            remoteScr = '%s.%s'%(simConf['runDirPrefix'],str(randID))
+            conn._mkdir(remoteScr)
+            conn.sendFile('{0}/job_{1}.zip'.format(tempDirName,init_runId),'{0}/job_packet.zip'.format(remoteScr))
+            conn.sendFile('{0}/batch_run{1}.py'.format(tempDirName,init_runId),'{0}/batch_run.py'.format(remoteScr))
+            shutil.rmtree(tempDirName)
+            
+            self.logger.update("SVC_FILE_SEND_SUCCESS",message="%s"%tempDirName)
+            apolloDB.setRunStatus(init_runId,"staging","run files successfully retrieved from the databae")
+        except Exception as e:
+            self.logger.update("SVC_FILE_SEND_FAILED",message="%s"%e)
+            apolloDB.setRunStatus(init_runId,"failed",self.logger.pollStatus()[1])
+            response[1]._runSimulationsResult._methodCallStatus._status = 'failed'
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)            
+            return response
+        
+        # unzip and run the job on the remote machine
+        try:
+            apolloDB.setRunStatus(init_runId,"staging","executing on the remote system")
+            returnVal = conn._executeCommand("cd {0}/{1}; chmod a+x batch_run.py; nohup ./batch_run.py >& out &".format(conn._remoteDir,
+                                                                                                                  remoteScr))                                                                                                                
+            self.logger.update("SVC_SUBMIT_JOB_SUCCESS",message="%s"%returnVal)
+            
+            conn._close()
+            t = Thread(target=monitorBatchStatus,args=(init_runId,apolloDB))
+            t.start()
+        except Exception as e:
+            self.logger.update("SVC_SUBMIT_JOB_FAILED",message="%s"%str(e))
+            apolloDB.setRunStatus(init_runId,"failed",self.logger.pollStatus()[1])
+            response[1]._runSimulationsResult._methodCallStatus._status = 'failed'
+            response[1]._runSimulationsResult._methodCallStatus._message = str(e)
+            return response
+        
+        response[1]._runSimulationsResult._methodCallStatus._status = "staging"
+        print "HERE"
+        response[1]._runSimulationsResult._methodCallStatus._message = 'runSimulation call completed successfully'
+        print "returning response"
+        print response[1]
+        return response
     # this method runs an epidemic model
     def soap_runSimulation(self, ps, **kw):
+        print "HERE"
         try:
             apolloDB = ApolloDB(dbname_=simWS.configuration['local']['apolloDBName'],
                                 host_=simWS.configuration['local']['apolloDBHost'],
@@ -85,20 +256,21 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             response = SimulatorService_v3_0_0.soap_runSimulation(self, ps, **kw)
 
             #initialize the return information
-	    print str(dir(response[1]))
-	    response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
+    	    response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
             response[1]._methodCallStatus._status = "staging"
             response[1]._methodCallStatus._message = "This is the starting message"
 
             #get the runId for this message
-            runId = response[0]._simulationRunId
-            apolloDB.setRunStatus(runId,'initializing',"Recieved message from Apollo")
+            init_runId = response[0]._simulationRunId
+            runIds = apolloDB.getRunsFromRunId(init_runId)
+            runId = init_runId
+            apolloDB.setRunStatus(init_runId,'initializing',"Recieved message from Apollo")
             self.logger.update("SVC_APL_RESQ_RECV")
 
         except Exception as e:
-	    print str(e)
+    	    print str(e)
             self.logger.update("SVC_APL_RESQ_RECV_FAILED", message="%s" % str(e))
-	    raise e
+    	    raise e
         
         # Parse and Translate the Apollo message First
         try:
@@ -128,93 +300,179 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             print str(e)
             raise e
 
-        # Create the current connector
-        
         try:
             confId = simWS.configuration['simulators']['mappings'][idPrefix]
             simConf = simWS.configuration['simulators'][confId]
             conn = SSHConn(self.logger,machineName_=simConf['defaultMachine'][0])
-            connections[str(runId)] = conn
             self.logger.update("SRV_SSH_CONN_SUCCESS",message="%s"%str(idPrefix))
-            apolloDB.setRunStatus(runId,"staging",message="ssh connection established")
+            apolloDB.setRunStatus(init_runId,"staging",message="ssh connection established")
         except Exception as e:
-	    print str(e)
             self.logger.update("SVC_SSH_CONN_FAILED",message="%s"%str(e))
-            apolloDB.setRunStatus(runId,"failed",message="%s"%self.logger.pollStatus()[1])
+            apolloDB.setRunStatus(runId,"failed",str(e))
             response[1]._methodCallStatus._status = 'failed'
             response[1]._methodCallStatus._message = str(e)
-            return response
-
+            print str(e)
+            raise e
         
-        # Make a random directory name so that multiple calls can be made
-             
+         # Make a random directory name so that multiple calls can be made     
         try:
             randID = random.randint(0,1000000000)
             tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
-				      simConf['runDirPrefix'],
-				      randID)
+                      simConf['runDirPrefix'],
+                      randID)
             os.mkdir(tempDirName)
             self.logger.update("SVC_TMPDIR_SUCCESS",message="%s"%tempDirName)
-            apolloDB.setRunStatus(runId,"staging","temporary directory created on remote system")
+            apolloDB.setRunStatus(init_runId,"staging","temporary directory created on local system")
         except Exception as e:
             self.logger.update("SVC_TMPDIR_FAILED",message="%s"%str(e))
-            apolloDB.setRunStatus(runId,"failed",message="%s"%self.logger.pollStatus()[1])
+            apolloDB.setRunStatus(init_runId,"failed",message="%s"%self.logger.pollStatus()[1])
             response[1]._methodCallStatus._status = 'failed'
             response[1]._methodCallStatus._message = str(e)
             return response
-
-        # Get the files from the Apollo DB
+        
         try:
-            translatorServiceId = apolloDB.getTranslatorServiceKey()
-            simulatorServiceId = apolloDB.getSimulatorServiceKey(dev,name,ver)
-            
-            simulatorInputFileDict = apolloDB.getSimulationInputFilesForRunId(runId,translatorServiceId,simulatorServiceId)
-            for fileName,content in simulatorInputFileDict.items():
-                with open(tempDirName+"/"+fileName,"wb") as f:
-                    f.write("%s"%content)
-
+            pbsBatch = PBSBatch(init_runId,
+                                nodes_=conn._configuration['mediumBatch'],
+                                ppn_=conn._configuration['ppn'],
+                                procsPerRun_=simConf['mediumPPR'],
+                                threadsPerRun_=simConf['mediumTPR'],
+                                apollodb_=apolloDB,
+                                localCnf_=simWS.configuration['local'],
+                                machineCnf_=conn._configuration,
+                                simulatorCnf_=simConf)
+            pbsBatch.populate_from_apollo_runId()
+            pbsBatch.create_zipFile("{0}/job_{1}.zip".format(tempDirName,init_runId))
+            pbsBatch.createRunScript("{0}/batch_run{1}.py".format(tempDirName,init_runId))
             self.logger.update("SVC_FILELIST_RECIEVED")
-            apolloDB.setRunStatus(runId,"staging","run files successfully retrieved from the database")
+            apolloDB.setRunStatus(init_runId,"staging","run files successfully retrieved from the database")
         except Exception as e:
             self.logger.update("SVC_FILELIST_FAILED",message="%s"%str(e))
-            apolloDB.setRunStatus(runId,"failed","%s"%self.logger.pollStatus()[1])
+            apolloDB.setRunStatus(init_runId,"failed","%s"%self.logger.pollStatus()[1])
             response[1]._methodCallStatus._status = 'failed'
             response[1]._methodCallStatus._message = str(e)
             return response
-
+        
+         # Send file to remote machine
         try:
             remoteScr = '%s.%s'%(simConf['runDirPrefix'],str(randID))
             conn._mkdir(remoteScr)
- 
-            for fileName,content in simulatorInputFileDict.items():
-                conn.sendFile(tempDirName + "/" + fileName, remoteScr + "/" + fileName)
-
-            ### we do not need temp directory anymore
+            conn.sendFile('{0}/job_{1}.zip'.format(tempDirName,init_runId),'{0}/job_packet.zip'.format(remoteScr))
+            conn.sendFile('{0}/batch_run{1}.py'.format(tempDirName,init_runId),'{0}/batch_run.py'.format(remoteScr))
             shutil.rmtree(tempDirName)
             
             self.logger.update("SVC_FILE_SEND_SUCCESS",message="%s"%tempDirName)
-            apolloDB.setRunStatus(runId,"staging","run files successfully retrieved from the databae")
+            apolloDB.setRunStatus(init_runId,"staging","run files successfully retrieved from the databae")
         except Exception as e:
             self.logger.update("SVC_FILE_SEND_FAILED",message="%s"%e)
-            apolloDB.setRunStatus(runId,"failed",self.logger.pollStatus()[1])
+            apolloDB.setRunStatus(init_runId,"failed",self.logger.pollStatus()[1])
             response[1]._methodCallStatus._status = 'failed'
             response[1]._methodCallStatus._message = str(e)            
             return response
-
+        
+        # unzip and run the job on the remote machine
         try:
-            (jobType,returnVal) = conn.submitJob(randID,runId,idPrefix,user=user)
+            apolloDB.setRunStatus(init_runId,"staging","executing on the remote system")
+            returnVal = conn._executeCommand("cd {0}/{1}; chmod a+x batch_run.py; nohup ./batch_run.py >& out &".format(conn._remoteDir,
+                                                                                                                  remoteScr))                                                                                                                
             self.logger.update("SVC_SUBMIT_JOB_SUCCESS",message="%s"%returnVal)
-            apolloDB.setRunStatus(runId,"queued","run is queued on remote system")
-            t = Thread(target=monitorConnectionForFailedOrCompleted,args=(conn,remoteScr,runId,apolloDB))
+            
+            conn._close()
+            t = Thread(target=monitorBatchStatus,args=(init_runId,apolloDB))
             t.start()
         except Exception as e:
             self.logger.update("SVC_SUBMIT_JOB_FAILED",message="%s"%str(e))
-            apolloDB.setRunStatus(runId,"failed",self.logger.pollStatus()[1])
+            apolloDB.setRunStatus(init_runId,"failed",self.logger.pollStatus()[1])
             response[1]._methodCallStatus._status = 'failed'
             response[1]._methodCallStatus._message = str(e)
             return response
+        # Create the current connector
+        
+#         try:
+#             confId = simWS.configuration['simulators']['mappings'][idPrefix]
+#             simConf = simWS.configuration['simulators'][confId]
+#             conn = SSHConn(self.logger,machineName_=simConf['defaultMachine'][0])
+#             connections[str(runId)] = conn
+#             self.logger.update("SRV_SSH_CONN_SUCCESS",message="%s"%str(idPrefix))
+#             apolloDB.setRunStatus(runId,"staging",message="ssh connection established")
+#         except Exception as e:
+#             print str(e)
+#             self.logger.update("SVC_SSH_CONN_FAILED",message="%s"%str(e))
+#             apolloDB.setRunStatus(runId,"failed",message="%s"%self.logger.pollStatus()[1])
+#             response[1]._methodCallStatus._status = 'failed'
+#             response[1]._methodCallStatus._message = str(e)
+#             return response
+# 
+#         
+#         # Make a random directory name so that multiple calls can be made     
+#         try:
+#             randID = random.randint(0,1000000000)
+#             tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
+# 				      simConf['runDirPrefix'],
+# 				      randID)
+#             os.mkdir(tempDirName)
+#             self.logger.update("SVC_TMPDIR_SUCCESS",message="%s"%tempDirName)
+#             apolloDB.setRunStatus(runId,"staging","temporary directory created on remote system")
+#         except Exception as e:
+#             self.logger.update("SVC_TMPDIR_FAILED",message="%s"%str(e))
+#             apolloDB.setRunStatus(runId,"failed",message="%s"%self.logger.pollStatus()[1])
+#             response[1]._methodCallStatus._status = 'failed'
+#             response[1]._methodCallStatus._message = str(e)
+#             return response
 
-        response[1]._methodCallStatus._status = 'success'
+        # Get the files from the Apollo DB
+#         try:
+#             translatorServiceId = apolloDB.getTranslatorServiceKey()
+#             simulatorServiceId = apolloDB.getSimulatorServiceKey(dev,name,ver)
+#             
+#             simulatorInputFileDict = apolloDB.getSimulationInputFilesForRunId(runId,translatorServiceId,simulatorServiceId)
+#             for fileName,content in simulatorInputFileDict.items():
+#                 with open(tempDirName+"/"+fileName,"wb") as f:
+#                     print "FileNAme = " + fileName
+#                     f.write("%s"%content)
+# 
+#             self.logger.update("SVC_FILELIST_RECIEVED")
+#             apolloDB.setRunStatus(runId,"staging","run files successfully retrieved from the database")
+#         except Exception as e:
+#             self.logger.update("SVC_FILELIST_FAILED",message="%s"%str(e))
+#             apolloDB.setRunStatus(runId,"failed","%s"%self.logger.pollStatus()[1])
+#             response[1]._methodCallStatus._status = 'failed'
+#             response[1]._methodCallStatus._message = str(e)
+#             return response
+# 
+#         try:
+#             remoteScr = '%s.%s'%(simConf['runDirPrefix'],str(randID))
+#             conn._mkdir(remoteScr)
+#  
+#             for fileName,content in simulatorInputFileDict.items():
+#                 conn.sendFile(tempDirName + "/" + fileName, remoteScr + "/" + fileName)
+# 
+#             ### we do not need temp directory anymore
+#             shutil.rmtree(tempDirName)
+#             
+#             self.logger.update("SVC_FILE_SEND_SUCCESS",message="%s"%tempDirName)
+#             apolloDB.setRunStatus(runId,"staging","run files successfully retrieved from the databae")
+#         except Exception as e:
+#             self.logger.update("SVC_FILE_SEND_FAILED",message="%s"%e)
+#             apolloDB.setRunStatus(runId,"failed",self.logger.pollStatus()[1])
+#             response[1]._methodCallStatus._status = 'failed'
+#             response[1]._methodCallStatus._message = str(e)            
+#             return response
+# 
+#         try:
+#             (jobType,returnVal) = conn.submitJob(randID,runId,idPrefix,user=user)
+#             self.logger.update("SVC_SUBMIT_JOB_SUCCESS",message="%s"%returnVal)
+#             apolloDB.setRunStatus(runId,"queued","run is queued on remote system")
+#             conn._close()
+#             #t = Thread(target=monitorBatchStatus,args=(runId,apolloDB))
+#             #t.start()
+#         except Exception as e:
+#             self.logger.update("SVC_SUBMIT_JOB_FAILED",message="%s"%str(e))
+#             apolloDB.setRunStatus(runId,"failed",self.logger.pollStatus()[1])
+#             response[1]._methodCallStatus._status = 'failed'
+#             response[1]._methodCallStatus._message = str(e)
+#             return response
+
+        response[1]._methodCallStatus._status = 'staging'
         response[1]._methodCallStatus._message = 'runSimulation call completed successfully'
         return response
 

@@ -1,4 +1,5 @@
 # Copyright 2012 University of Pittsburgh
+# Copyright 2012 Pittsburgh Supercomputing Center
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License.  You may obtain a copy of
@@ -312,12 +313,15 @@ class SSHConn:
     def _submitPBSJob(self,tmpId,simId,simConf,size="small",user="NOONE"):
         ## Create starttime file
         try:
-	    print "HERE"
+            tmpDir = '{0}.{1}'.format(simConf['runDirPrefix'],str(tmpId))
+            pbsScript,epiScript = self.createPBSRunScript(simConf,simId,size=size,user=user,tmpDir=tmpDir)
             with open(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),"wb") as f:
-                f.write("%s"%self.createPBSRunScript(simConf,simId,size=size,user=user))
-	    print "NERE2"
-            self.sendFile(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),simConf['runDirPrefix']+"."+str(tmpId)+"/submit.pbs")
-            self.sendFile('/usr/local/packages/Simulator-WS-v2.0.2/templates/starttime',simConf['runDirPrefix']+"."+str(tmpId) + '/starttime')
+                f.write('{0}'.format(pbsScript))
+            with open(self._localConfiguration['scratchDir'] + "/apollo_epi_script.csh.{0}".format(tmpId),"wb") as f:
+                f.write('{0}'.format(epiScript))
+            self.sendFile(self._localConfiguration['scratchDir'] + "/submit.pbs.%s"%str(tmpId),"{0}/submit.pbs".format(tmpDir))
+            self.sendFile(self._localConfiguration['scratchDir'] + "/apollo_epi_script.csh.{0}".format(tmpId),"{0}/apollo_epi_script.csh".format(tmpDir))
+            self.sendFile('/usr/local/packages/Simulator-WS-v2.0.2/templates/starttime','{0}/starttime'.format(tmpDir))
             self._startTiming = True
             self.logger.update("SSH_PBS_CREATE_SCRIPT_SUCCESS")
         except Exception as e:
@@ -485,82 +489,103 @@ class SSHConn:
             elif status == "COMPLETED":
                 response = 'The run completed successfully at %s'%(date)
 	return (status,response)
-    def createPBSRunScript(self,simConf,id,size="small",user="NOONE"):
+    def createPBSRunScript(self, simConf, id, size="small", user="NOONE", tmpDir=None):
         try:
-	    import random
+     	    import random
             dbString = "-H {0} -D {1} -U {2} -P {3} ".format(self._localConfiguration['apolloDBHost'],
-							     self._localConfiguration['apolloDBName'],
-	                                                     self._localConfiguration['apolloDBUser'],
-	                                                     self._localConfiguration['apolloDBPword'])
-	    tempId = random.randint(0,100000)
-	    print str(tempId)
+                                                             self._localConfiguration['apolloDBName'],
+     	                                                     self._localConfiguration['apolloDBUser'],
+     	                                                     self._localConfiguration['apolloDBPword'])
+     	    tempId = random.randint(0, 100000)
             PBSList = []
             PBSList.append('#!/bin/csh\n')
-            PBSList.append('#PBS %s\n'%(self._configuration[size]))
+            PBSList.append('#PBS %s\n' % (self._configuration[size]))
             PBSList.append('#PBS -o apollo_out.txt\n')
             PBSList.append('#PBS -e apollo_err.txt\n')
+            PBSList.append("#PBS -l epilogue={0}/{1}/apollo_epi_script.csh\n".format(self._remoteDir,tmpDir))
             if user[-5:] == "+priv":
-                PBSList.append('#PBS -q %s\n'%self._configuration['priorityQueue'])
+                PBSList.append('#PBS -q %s\n' % self._configuration['priorityQueue'])
             PBSList.append('\n')
-            PBSList.append('%s\n\n'%self._configuration['special'])
-            if self._configuration['useModules']:
-                PBSList.append('%s\n'%simConf['moduleCommand'])
-	    PBSList.append('setenv APOLLO_HOME %s\n'%self._configuration['apolloPyLoc'])
             PBSList.append('cd $PBS_O_WORKDIR\n')
-            PBSList.append('%s %s -s running -m "simulation started"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
+            PBSList.append('chmod 700 apollo_epi_script.csh\n')
+            PBSList.append('%s\n\n' % self._configuration['special'])
+            if self._configuration['useModules']:
+		print "Printing this"
+                PBSList.append('%s\n' % simConf['moduleCommand'][simConf['stagedMachines'].index(self._machine)])
+		print "Done printing this"
+            PBSList.append('setenv APOLLO_HOME %s\n' % self._configuration['apolloPyLoc'])
+            PBSList.append('%s %s -s running -m "simulation started"\n' % (simConf['statusCommand'].replace("<<ID>>", str(id)), dbString))
             PBSList.append('if ($status) then\n')
-            PBSList.append('   echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('   echo "There was a problem updating the status of job %s to the database"\n' % (str(id)))
             PBSList.append('   touch .failed\n')
             PBSList.append('   exit 1\n')
             PBSList.append('endif\n')
-            PBSList.append('%s\n'%self._configuration['getID'])
-	    PBSList.append('%s\n'%simConf['preProcessCommand'])
-            PBSList.append('(%s %s > run.stdout) >& run.stderr\n'%(simConf['runCommand'].replace("<<tID>>","%s_%s"%(str(tempId),str(id))).replace("<<ID>>",str(id)),simConf[size]))
-	    PBSList.append('set errCont = `stat -c %s run.stderr`\n')
+            PBSList.append('%s\n' % self._configuration['getID'])
+            PBSList.append('%s\n' % simConf['preProcessCommand'])
+            PBSList.append('(%s %s > run.stdout) >& run.stderr\n' % (simConf['runCommand'].replace("<<tID>>", "%s_%s" % (str(tempId), str(id))).replace("<<ID>>", str(id)), simConf[size]))
+            PBSList.append('set errCont = `stat -c %s run.stderr`\n')
             PBSList.append('if ($status || $errCont != "0") then\n')
-            PBSList.append('   %s %s -s failed -m "The simulation failed during running"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
+            PBSList.append('   %s %s -s failed -m "The simulation failed during running"\n' % (simConf['statusCommand'].replace("<<ID>>", str(id)), dbString))
             PBSList.append('   if ($status) then\n')
-            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n' % (str(id)))
             PBSList.append('       touch .failed\n')
             PBSList.append('      exit 1\n')
             PBSList.append('   endif\n')
             PBSList.append('   touch .failed\n')
             PBSList.append('   exit 1\n')
             PBSList.append('else\n')           
-            PBSList.append("   %s %s -s running -m 'populating Apollo Database'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
+            PBSList.append("   %s %s -s running -m 'populating Apollo Database'\n" % (simConf['statusCommand'].replace("<<ID>>", str(id)), dbString))
             PBSList.append('   if ($status) then\n')
-            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n' % (str(id)))
             PBSList.append('       touch .failed\n')
             PBSList.append('      exit 1\n')
             PBSList.append('   endif\n')
             PBSList.append('endif\n')
-            PBSList.append('(%s %s> run.stdout) > & run.stderr\n'%(simConf['dbCommand'].replace("<<tID>>","%s_%s"%(str(tempId),str(id))).replace('<<ID>>',str(id)),dbString))
+            PBSList.append('(%s %s> run.stdout) > & run.stderr\n' % (simConf['dbCommand'].replace("<<tID>>", "%s_%s" % (str(tempId), str(id))).replace('<<ID>>', str(id)), dbString))
             PBSList.append('set errCont = `stat -c %s run.stderr`\n')
             PBSList.append('if ($status || $errCont != "0") then\n')
-            PBSList.append('   %s %s -s failed -m "Database upload failed"\n'%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
+            PBSList.append('   %s %s -s failed -m "Database upload failed"\n' % (simConf['statusCommand'].replace("<<ID>>", str(id)), dbString))
             PBSList.append('   if ($status) then\n')
-            PBSList.append('      echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('      echo "There was a problem updating the status of job %s to the database"\n' % (str(id)))
             PBSList.append('      touch .failed\n')
             PBSList.append('      exit 1\n')
             PBSList.append('   endif\n')
             PBSList.append('   touch .failed\n')
             PBSList.append('   exit 1\n')
             PBSList.append('else\n')           
-            PBSList.append("   %s %s -s completed -m 'simulation completed'\n"%(simConf['statusCommand'].replace("<<ID>>",str(id)),dbString))
+            PBSList.append("   %s %s -s completed -m 'simulation completed'\n" % (simConf['statusCommand'].replace("<<ID>>", str(id)), dbString))
             PBSList.append('   if ($status) then\n')
-            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n'%(str(id)))
+            PBSList.append('       echo "There was a problem updating the status of job %s to the database"\n' % (str(id)))
             PBSList.append('       touch .failed\n')
             PBSList.append('      exit 1\n')
             PBSList.append('   endif\n')
             PBSList.append('endif\n')
-	    PBSList.append('touch .completed')
+            PBSList.append('touch .completed')
+            
+            epilogueList = []
+            epilogueList.append("#!/bin/csh\n")
+
+            epilogueList.append("cd $PBS_O_WORKDIR\n")
+            epilogueList.append("echo 'Stuff' > ./good.txt\n")
+            epilogueList.append("if ( -e .completed ) then\n")
+            epilogueList.append("    exit 0\n")
+            epilogueList.append("end\n")
+            epilogueList.append('setenv APOLLO_HOME %s\n' % self._configuration['apolloPyLoc'])
+            #epilogueList.append("if ( -e .failed ) then\n")
+            epilogueList.append("set err = 'No Additional Information is Available on the Failure'\n")
+            epilogueList.append("if( -z run.stderr ) then\n")
+            epilogueList.append("   set err = `cat run.stderr | sed 'g/\"//s'`\n")
+            epilogueList.append("else if( -z apollo.err.txt) then\n")
+            epilogueList.append("   set err = `cat apollo.err.txt | sed 'g/\"//s'`\n")
+            epilogueList.append("end\n")
+            epilogueList.append("{0} {1} -s failed -m $err\n".format(simConf['statusCommand'].replace("<<ID>>", str(id)), dbString))
             self.logger.update("SSH_CREATEPBSRUN_SUCCESS")
         except Exception as e:
-            self.logger.update("SSH_CREATEPBSRUN_FAILED",message=str(e))
+            self.logger.update("SSH_CREATEPBSRUN_FAILED", message=str(e))
             print str(e)
             raise e
         
-        return ("").join(PBSList)
+        return (("").join(PBSList),("").join(epilogueList))
     
     def _createDirectRunScript(self,simConf,id,size="small"):
         try:
@@ -596,7 +621,7 @@ class SSHConn:
             raise e
 
         return ("").join(LocalList)
-            
+                    
 def jsonDict2Obj(d):
     if isinstance(d, list):
 	d = [jsonDict2Obj(x) for x in d]
