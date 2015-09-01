@@ -51,40 +51,42 @@ def generate_message(statsDict):
                                                                                         statsDict['total'])
 
 def monitorBatchStatus(batchId,apolloDB):
-	while True:
-		runsToCheck = apolloDB.getRunsFromRunId(batchId)
-		runStatus = {}
-		overallStatus = "queued"
-		message = "batch of runs is queued"
-		
-		for runId in runsToCheck:
-			runStatus[runId] = apolloDB.getRunStatus(runId)
-		statsDict = {'total':0,'completed':0,'running':0,'queued':0,'failed':0}
+    while True:
+        runsToCheck = apolloDB.getRunsFromRunId(batchId)
+        runStatus = {}
+        overallStatus = "queued"
+        message = "batch of runs is queued"
+        
+        for runId in runsToCheck:
+            runStatus[runId] = apolloDB.getRunStatus(runId)
+        statsDict = {'total':0, 'completed':0, 'running':0, 'queued':0, 'failed':0}
 
-    		for runId,status in runStatus.items():
-        		if status[0] not in statsDict.keys():
-            			statsDict['queued'] += 1
-        		else:
-            			statsDict[status[0]] += 1
-        		statsDict['total'] += 1
+        for runId, status in runStatus.items():
+            if status[0] not in statsDict.keys():
+                statsDict['queued'] += 1
+            else:
+                statsDict[status[0]] += 1
+            statsDict['total'] += 1
 
-   	 	if statsDict['queued'] != statsDict['total']:
-        	# this means that something has already happened
-        		if (statsDict['completed'] + statsDict['failed'])== statsDict['total']:
-            			if statsDict['failed']:
-                			overallStatus = "failed"
-            			else:
-                			overallStatus = "completed"
-        		else:
-            			overallStatus = "running"
+        if statsDict['queued'] != statsDict['total']:
+            # this means that something has already happened
+            if (statsDict['completed'] + statsDict['failed']) == statsDict['total']:
+                if statsDict['failed']:
+                    overallStatus = "failed"
+                else:
+                    overallStatus = "completed"
+            else:
+                overallStatus = "running"
 
-    		message = generate_message(statsDict)
+        message = generate_message(statsDict)
     
-    		apolloDB.setRunStatus(batchId,overallStatus,message)
-        	if overallStatus == "completed":
-            		break
-	    
-        	time.sleep(5)
+        apolloDB.setRunStatus(batchId, overallStatus, message)
+        if overallStatus == "completed":
+            break 
+        if overallStatus == "failed":
+            break   
+        time.sleep(5)
+
 class SimulatorWebService(SimulatorService_v3_0_0):
     _wsdl = "".join(open(simWS.configuration['local']['wsdlFile']).readlines())
         
@@ -93,9 +95,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
     logger = Log(simWS.configuration['local']['logFile'])
     logger.start()
     
-    def soap_runSimulations(self,ps, **kw):
-        
-        
+    def soap_runSimulations(self,ps, **kw): 
         try:
             ### Connect to the Apollo Database
             apolloDB = ApolloDB(dbname_=simWS.configuration['local']['apolloDBName'],
@@ -239,10 +239,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             return response
         
         response[1]._runSimulationsResult._methodCallStatus._status = "staging"
-        print "HERE"
         response[1]._runSimulationsResult._methodCallStatus._message = 'runSimulation call completed successfully'
-        print "returning response"
-        print response[1]
         return response
     # this method runs an epidemic model
     def soap_runSimulation(self, ps, **kw):
@@ -256,7 +253,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             response = SimulatorService_v3_0_0.soap_runSimulation(self, ps, **kw)
 
             #initialize the return information
-    	    response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
+            response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
             response[1]._methodCallStatus._status = "staging"
             response[1]._methodCallStatus._message = "This is the starting message"
 
@@ -268,16 +265,15 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             self.logger.update("SVC_APL_RESQ_RECV")
 
         except Exception as e:
-    	    print str(e)
+            print str(e)
             self.logger.update("SVC_APL_RESQ_RECV_FAILED", message="%s" % str(e))
-    	    raise e
+            raise e
         
         # Parse and Translate the Apollo message First
         try:
             # Get the information about the simulator
             (name,dev,ver) = apolloDB.getSoftwareIdentificationForRunId(runId)
             idPrefix = "%s_%s_%s_"%(dev,name,ver)
-	    
             self.logger.update("SVC_APL_TRANS_RECV",message="%s"%str(idPrefix))
         except Exception as e:
             self.logger.update("SVC_APL_TRANS_FAILED",message="%s"%str(e))
@@ -314,7 +310,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             print str(e)
             raise e
         
-         # Make a random directory name so that multiple calls can be made     
+        # Make a random directory name so that multiple calls can be made     
         try:
             randID = random.randint(0,1000000000)
             tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
@@ -340,6 +336,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
                                 localCnf_=simWS.configuration['local'],
                                 machineCnf_=conn._configuration,
                                 simulatorCnf_=simConf)
+            
             pbsBatch.populate_from_apollo_runId()
             pbsBatch.create_zipFile("{0}/job_{1}.zip".format(tempDirName,init_runId))
             pbsBatch.createRunScript("{0}/batch_run{1}.py".format(tempDirName,init_runId))
