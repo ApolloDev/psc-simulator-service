@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schema xmlns="http://www.w3.org/2001/XMLSchema"
-	targetNamespace="http://simulator-service-types.apollo.pitt.edu/v3_0_0/"
-	xmlns:tns="http://simulator-service-types.apollo.pitt.edu/v3_0_0/"
-	elementFormDefault="qualified" xmlns:common="http://services-common.apollo.pitt.edu/v3_0_0/"
-	xmlns:apollo="http://types.apollo.pitt.edu/v3_0_0/">
+	targetNamespace="http://simulator-service-types.apollo.pitt.edu/v3_0_2/"
+	xmlns:tns="http://simulator-service-types.apollo.pitt.edu/v3_0_2/"
+	elementFormDefault="qualified" xmlns:common="http://services-common.apollo.pitt.edu/v3_0_2/"
+	xmlns:apollo="http://types.apollo.pitt.edu/v3_0_2/">
 
-	<import schemaLocation="http://gaia.pha.psc.edu/services-common_3.0.0.xsd"
-		namespace="http://services-common.apollo.pitt.edu/v3_0_0/">
+	<import schemaLocation="services_common_3.0.2.xsd"
+		namespace="http://services-common.apollo.pitt.edu/v3_0_2/">
 	</import>
 
-	<import schemaLocation="apollo-types_3.0.0.xsd" namespace="http://types.apollo.pitt.edu/v3_0_0/"></import>
+	<import schemaLocation="apollo_types_3.0.2.xsd" namespace="http://types.apollo.pitt.edu/v3_0_2/"></import>
 
-	
+
 	<complexType name="RunSimulationResult">
 		<sequence>
 			<element name="runId" type="common:RunIdentification" />
 		</sequence>
 	</complexType>
-	
+
 	<complexType name="GetScenarioLocationCodesSupportedBySimulatorResult">
 		<sequence>
 			<element name="methodCallStatus" type="common:MethodCallStatus"
@@ -55,19 +55,21 @@
 	</complexType>
 
 	<complexType name="RunSimulationMessage">
+		<complexContent>
+		<extension base="common:RunMessage">
 		<sequence>
-			<element name="simulatorIdentification" type="common:SoftwareIdentification"
-				maxOccurs="1" minOccurs="1">
-			</element>
-			<element name="authentication" type="common:Authentication"
-				maxOccurs="1" minOccurs="1">
-			</element>
 			<element name="simulatorTimeSpecification" type="apollo:SimulatorTimeSpecification"
 				maxOccurs="1" minOccurs="1">
 			</element>
 			<element name="infectiousDiseaseScenario" type="apollo:InfectiousDiseaseScenario"
 				maxOccurs="1" minOccurs="1" />
+			<!-- <element name="softwareOutputStratificationGranularity" type="common:SoftwareOutputStratificationGranularity" 
+				minOccurs="1" maxOccurs="1"/> -->
 		</sequence>
+		</extension>
+	</complexContent>
 	</complexType>
 
+    
+    <element name="RunSimulationMessageElement" type="tns:RunSimulationMessage"/>
 </schema>

@@ -20,7 +20,7 @@ Created on Nov 29, 2012
 @author: John Levander and Shawn Brown
 '''
 
-from SimulatorService_v3_0_0_types import *
+from SimulatorService_v3_0_2_types import *
 import inspect
 
 
@@ -146,15 +146,15 @@ class ApolloFactory:
         return psd
 
     def new_MethodCallStatus(self):
-        run_status = ns2.MethodCallStatus_Def(ZSI.TCcompound.ComplexType).pyclass()
+        run_status = ns1.MethodCallStatus_Def(ZSI.TCcompound.ComplexType).pyclass()
         run_status._status = "failed"#ns2.MethodCallStatusEnum_Def(None).pyclass()
         run_status._message = "unknown"
         return run_status
     
     
     def new_RunResult(self):
-        run_result = ns2.RunResult_Def(None).pyclass()
-        run_result._runId = ns2.RunIdentification_Def(None).pyclass()
+        run_result = ns1.RunResult_Def(None).pyclass()
+        run_result._runId = ns1.RunIdentification_Def(None).pyclass()
         run_result._methodCallStatus = self.new_MethodCallStatus()
         return run_result
     

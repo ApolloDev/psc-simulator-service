@@ -21,10 +21,10 @@ Created on Nov 27, 2012
 '''
 
 import paths
-from SimulatorService_v3_0_0_server import SimulatorService_v3_0_0
+from SimulatorService_v3_0_2_server import SimulatorService_v3_0_2
 from ZSI import *
 from ZSI.ServiceContainer import AsServer
-from SimulatorService_v3_0_0_types import *
+from SimulatorService_v3_0_2_types import *
 from ApolloFactory import *
 from ApolloUtils import *
 import os,sys
@@ -56,12 +56,12 @@ def monitorBatchStatus(batchId,apolloDB):
         runStatus = {}
         overallStatus = "queued"
         message = "batch of runs is queued"
-        
+
         for runId in runsToCheck:
             runStatus[runId] = apolloDB.getRunStatus(runId)
-        statsDict = {'total':0, 'completed':0, 'running':0, 'queued':0, 'failed':0}
+        statsDict = {'total':0,'completed':0,'running':0,'queued':0,'failed':0}
 
-        for runId, status in runStatus.items():
+        for runId,status in runStatus.items():
             if status[0] not in statsDict.keys():
                 statsDict['queued'] += 1
             else:
@@ -70,7 +70,7 @@ def monitorBatchStatus(batchId,apolloDB):
 
         if statsDict['queued'] != statsDict['total']:
             # this means that something has already happened
-            if (statsDict['completed'] + statsDict['failed']) == statsDict['total']:
+            if (statsDict['completed'] + statsDict['failed'])== statsDict['total']:
                 if statsDict['failed']:
                     overallStatus = "failed"
                 else:
@@ -78,16 +78,16 @@ def monitorBatchStatus(batchId,apolloDB):
             else:
                 overallStatus = "running"
 
-        message = generate_message(statsDict)
+            message = generate_message(statsDict)
     
-        apolloDB.setRunStatus(batchId, overallStatus, message)
-        if overallStatus == "completed":
-            break 
-        if overallStatus == "failed":
-            break   
+            apolloDB.setRunStatus(batchId,overallStatus,message)
+            if overallStatus == "completed":
+                break
+            if overallStatus == "failed":
+                break
         time.sleep(5)
-
-class SimulatorWebService(SimulatorService_v3_0_0):
+        
+class SimulatorWebService(SimulatorService_v3_0_2):
     _wsdl = "".join(open(simWS.configuration['local']['wsdlFile']).readlines())
         
     factory = ApolloFactory()
@@ -95,7 +95,9 @@ class SimulatorWebService(SimulatorService_v3_0_0):
     logger = Log(simWS.configuration['local']['logFile'])
     logger.start()
     
-    def soap_runSimulations(self,ps, **kw): 
+    def soap_runSimulations(self,ps, **kw):
+        
+        
         try:
             ### Connect to the Apollo Database
             apolloDB = ApolloDB(dbname_=simWS.configuration['local']['apolloDBName'],
@@ -105,7 +107,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             apolloDB.connect()
             
             #initialize the return information
-            response = SimulatorService_v3_0_0.soap_runSimulations(self, ps, **kw)
+            response = SimulatorService_v3_0_2.soap_runSimulations(self, ps, **kw)
             response[1]._runSimulationsResult = self.factory.new_RunResult()
             response[1]._runSimulationsResult._runId = response[0]._simulationRunId
             response[1]._runSimulationsResult._methodCallStatus = self.factory.new_MethodCallStatus()
@@ -138,8 +140,11 @@ class SimulatorWebService(SimulatorService_v3_0_0):
         
         # Get the pertinent user information from the runSimulation message from the database
         try:
+            transId = apolloDB.getSoftwareIdentificationId("Translator","1.0")
+            endId = apolloDB.getSoftwareIdentificationId("any","any")
+
             jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(init_runId,"run_simulation_message.json",
-                                                                  0,1,"TEXT","RUN_SIMULATION_MESSAGE")
+                                                                  endId,transId,"TEXT","RUN_SIMULATION_MESSAGE")
             jsonDict = json.loads(jsonStr)
             user = jsonDict['authentication']['requesterId']
             
@@ -241,16 +246,16 @@ class SimulatorWebService(SimulatorService_v3_0_0):
         response[1]._runSimulationsResult._methodCallStatus._status = "staging"
         response[1]._runSimulationsResult._methodCallStatus._message = 'runSimulation call completed successfully'
         return response
+    
     # this method runs an epidemic model
     def soap_runSimulation(self, ps, **kw):
-        print "HERE"
         try:
             apolloDB = ApolloDB(dbname_=simWS.configuration['local']['apolloDBName'],
                                 host_=simWS.configuration['local']['apolloDBHost'],
                                 user_=simWS.configuration['local']['apolloDBUser'],
                                 password_=simWS.configuration['local']['apolloDBPword'])
             apolloDB.connect()
-            response = SimulatorService_v3_0_0.soap_runSimulation(self, ps, **kw)
+            response = SimulatorService_v3_0_2.soap_runSimulation(self, ps, **kw)
 
             #initialize the return information
             response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
@@ -284,8 +289,10 @@ class SimulatorWebService(SimulatorService_v3_0_0):
 
         # Get the pertinent user information from the runSimulation message from the database
         try:
+            transId = apolloDB.getSoftwareIdentificationId("Translator","1.0")
+            endId = apolloDB.getSoftwareIdentificationId("any","any")
             jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(runId,"run_simulation_message.json",
-                                                                  0,1,"TEXT","RUN_SIMULATION_MESSAGE")
+                                                                  endId,transId,"TEXT","RUN_SIMULATION_MESSAGE")
             jsonDict = json.loads(jsonStr)
             user = jsonDict['authentication']['requesterId']
             
@@ -330,13 +337,12 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             pbsBatch = PBSBatch(init_runId,
                                 nodes_=conn._configuration['mediumBatch'],
                                 ppn_=conn._configuration['ppn'],
-                                procsPerRun_=simConf['mediumPPR'],
-                                threadsPerRun_=simConf['mediumTPR'],
+                                procsPerRun_=simConf['singlePPR'],
+                                threadsPerRun_=simConf['singleTPR'],
                                 apollodb_=apolloDB,
                                 localCnf_=simWS.configuration['local'],
                                 machineCnf_=conn._configuration,
                                 simulatorCnf_=simConf)
-            
             pbsBatch.populate_from_apollo_runId()
             pbsBatch.create_zipFile("{0}/job_{1}.zip".format(tempDirName,init_runId))
             pbsBatch.createRunScript("{0}/batch_run{1}.py".format(tempDirName,init_runId))
@@ -349,7 +355,7 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             response[1]._methodCallStatus._message = str(e)
             return response
         
-         # Send file to remote machine
+        # Send file to remote machine
         try:
             remoteScr = '%s.%s'%(simConf['runDirPrefix'],str(randID))
             conn._mkdir(remoteScr)
@@ -382,92 +388,6 @@ class SimulatorWebService(SimulatorService_v3_0_0):
             response[1]._methodCallStatus._status = 'failed'
             response[1]._methodCallStatus._message = str(e)
             return response
-        # Create the current connector
-        
-#         try:
-#             confId = simWS.configuration['simulators']['mappings'][idPrefix]
-#             simConf = simWS.configuration['simulators'][confId]
-#             conn = SSHConn(self.logger,machineName_=simConf['defaultMachine'][0])
-#             connections[str(runId)] = conn
-#             self.logger.update("SRV_SSH_CONN_SUCCESS",message="%s"%str(idPrefix))
-#             apolloDB.setRunStatus(runId,"staging",message="ssh connection established")
-#         except Exception as e:
-#             print str(e)
-#             self.logger.update("SVC_SSH_CONN_FAILED",message="%s"%str(e))
-#             apolloDB.setRunStatus(runId,"failed",message="%s"%self.logger.pollStatus()[1])
-#             response[1]._methodCallStatus._status = 'failed'
-#             response[1]._methodCallStatus._message = str(e)
-#             return response
-# 
-#         
-#         # Make a random directory name so that multiple calls can be made     
-#         try:
-#             randID = random.randint(0,1000000000)
-#             tempDirName = "%s/%s.%d"%(simWS.configuration["local"]["scratchDir"],
-# 				      simConf['runDirPrefix'],
-# 				      randID)
-#             os.mkdir(tempDirName)
-#             self.logger.update("SVC_TMPDIR_SUCCESS",message="%s"%tempDirName)
-#             apolloDB.setRunStatus(runId,"staging","temporary directory created on remote system")
-#         except Exception as e:
-#             self.logger.update("SVC_TMPDIR_FAILED",message="%s"%str(e))
-#             apolloDB.setRunStatus(runId,"failed",message="%s"%self.logger.pollStatus()[1])
-#             response[1]._methodCallStatus._status = 'failed'
-#             response[1]._methodCallStatus._message = str(e)
-#             return response
-
-        # Get the files from the Apollo DB
-#         try:
-#             translatorServiceId = apolloDB.getTranslatorServiceKey()
-#             simulatorServiceId = apolloDB.getSimulatorServiceKey(dev,name,ver)
-#             
-#             simulatorInputFileDict = apolloDB.getSimulationInputFilesForRunId(runId,translatorServiceId,simulatorServiceId)
-#             for fileName,content in simulatorInputFileDict.items():
-#                 with open(tempDirName+"/"+fileName,"wb") as f:
-#                     print "FileNAme = " + fileName
-#                     f.write("%s"%content)
-# 
-#             self.logger.update("SVC_FILELIST_RECIEVED")
-#             apolloDB.setRunStatus(runId,"staging","run files successfully retrieved from the database")
-#         except Exception as e:
-#             self.logger.update("SVC_FILELIST_FAILED",message="%s"%str(e))
-#             apolloDB.setRunStatus(runId,"failed","%s"%self.logger.pollStatus()[1])
-#             response[1]._methodCallStatus._status = 'failed'
-#             response[1]._methodCallStatus._message = str(e)
-#             return response
-# 
-#         try:
-#             remoteScr = '%s.%s'%(simConf['runDirPrefix'],str(randID))
-#             conn._mkdir(remoteScr)
-#  
-#             for fileName,content in simulatorInputFileDict.items():
-#                 conn.sendFile(tempDirName + "/" + fileName, remoteScr + "/" + fileName)
-# 
-#             ### we do not need temp directory anymore
-#             shutil.rmtree(tempDirName)
-#             
-#             self.logger.update("SVC_FILE_SEND_SUCCESS",message="%s"%tempDirName)
-#             apolloDB.setRunStatus(runId,"staging","run files successfully retrieved from the databae")
-#         except Exception as e:
-#             self.logger.update("SVC_FILE_SEND_FAILED",message="%s"%e)
-#             apolloDB.setRunStatus(runId,"failed",self.logger.pollStatus()[1])
-#             response[1]._methodCallStatus._status = 'failed'
-#             response[1]._methodCallStatus._message = str(e)            
-#             return response
-# 
-#         try:
-#             (jobType,returnVal) = conn.submitJob(randID,runId,idPrefix,user=user)
-#             self.logger.update("SVC_SUBMIT_JOB_SUCCESS",message="%s"%returnVal)
-#             apolloDB.setRunStatus(runId,"queued","run is queued on remote system")
-#             conn._close()
-#             #t = Thread(target=monitorBatchStatus,args=(runId,apolloDB))
-#             #t.start()
-#         except Exception as e:
-#             self.logger.update("SVC_SUBMIT_JOB_FAILED",message="%s"%str(e))
-#             apolloDB.setRunStatus(runId,"failed",self.logger.pollStatus()[1])
-#             response[1]._methodCallStatus._status = 'failed'
-#             response[1]._methodCallStatus._message = str(e)
-#             return response
 
         response[1]._methodCallStatus._status = 'staging'
         response[1]._methodCallStatus._message = 'runSimulation call completed successfully'

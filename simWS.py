@@ -23,17 +23,17 @@ Created on Jun 2013
 configuration = { 
     'local': {
             'scratchDir':'/tmp',
-            'serviceDir':'/usr/local/packages/Simulator-WS-v3.0.b',
-            'templateDir':'/usr/local/packages/Simulator-WS-v3.0.b/templates',
-            'logFile':'/usr/local/packages/Simulator-WS-v3.0.b/sim.log',
-            'wsdlFile':'/usr/local/packages/Simulator-WS-v3.0.b/simulatorservice300.wsdl',
+            'serviceDir':'/usr/local/packages/Simulator-WS-v3.0.2',
+            'templateDir':'/usr/local/packages/Simulator-WS-v3.0.2/templates',
+            'logFile':'/usr/local/packages/Simulator-WS-v3.0.2/sim.log',
+            'wsdlFile':'/usr/local/packages/Simulator-WS-v3.0.2/simulator_service_3.0.2.wsdl',
             'apolloPyDir':'/usr/local/packages/apollo-db-python-module',
-            'port':'13500',
-            'version':'3.0.0',
-            'apolloDBName':'apollo_300_snapshot',
+            'port':'8099',
+            'version':'3.0.2',
+            'apolloDBName':'apollo_302_snapshot',
             'apolloDBHost':'pha-db.psc.edu',
-            'apolloDBUser':'apolloext',
-            'apolloDBPword':''
+            'apolloDBUser':'apolloint',
+            'apolloDBPword':'int4p011o'
     },
     # Private key files will have to be updated by the user
     'machines':{
@@ -44,7 +44,7 @@ configuration = {
                 'privateKeyFile':'/usr/local/packages/.k/id_rsa.login.olympus',
                 'queueType':'PBS',
                 'priorityQueue':'batch',
-                'remoteDir':'/cephfs/ows_simulator/apolloTemp',
+                'remoteDir':'/home/ows_simulator/apolloTemp',
                 'submitCommand':'/opt/bin/qsub',
                 'special':'source /opt/packages/virtualenvs/ows2.7/bin/activate.csh; module load gnu_parallel',
                 'apolloPyLoc':'/local/apollo-db-files',
@@ -59,7 +59,6 @@ configuration = {
                 'mediumBatch':36,
                 'useParallel':True,
                 'env':'/bin/env'
-             },
     	},
     },
     'simulators':{
@@ -68,7 +67,8 @@ configuration = {
             'UPitt,PSC,CMU_FRED_2.0.1_i_':'fred_V1_i',
             'Chao-FredHutchinsonCancerCenter_FluTE_1.15_':'flute_v1.15',
             'PSC_CLARA_0.5_':'clara_v0.5',
-	    'UPitt_SEIR_3.0':'seir_30',
+	        'UPitt_SEIR_3.0':'seir_30',
+            'PSC_OpenMalaria_1.0_':'openmalaria_32',
             'test':'test',
             'fred':'fred_V1'
         },
@@ -103,7 +103,11 @@ configuration = {
             'debug':'-m 8 -n 4 -t 4',
             'mediumPPR':1,
             'mediumTPR':2,
-            'mediumReals':4
+            'mediumReals':4,
+            'singlePPR':8,
+            'singleTPR':4,
+            'singleReals':8
+            
         },
     	'flute_v1.15':{
     	    'stagedMachines':['fe-sandbox.psc.edu','pscss.olympus.psc.edu'],
@@ -122,8 +126,32 @@ configuration = {
             'debug':'',
             'mediumPPR':4,
             'mediumTPR':1,
-            'mediumReals':4
+            'mediumReals':4,
+            'singlePPR':4,
+            'singleTPR':1,
     	},
+        'openmalaria_32':{
+            'stagedMachines':['pscss.olympus.psc.edu'],
+            'defaultMachine':['pscss.olympus.psc.edu'],
+            'runDirPrefix':'om.tmp',
+            'preProcessCommand':'module load openmalaria_resources',
+            'dependencies':['apollo.py','apollo_update_status.py','apollo_batch_update_status.py','logger.py'],
+            'moduleCommand':['module load openmalaria/32'],
+            'moduleName':['openmalaria/32'],
+            'runCommand':'$OM_HOME/run_om_apollo.bash',
+            'dbCommand':'',
+            #'dbCommand':'python $APOLLO_HOME/flute_to_apollo-snap.py -o OUT -i <<ID>>',
+            'statusCommand':'python $APOLLO_HOME/apollo_update_status.py -r <<ID>>',
+            'big':'',
+            'medium':'',
+            'small':'',
+            'debug':'',
+            'mediumPPR':4,
+            'mediumTPR':1,
+            'mediumReals':4,
+            'singlePPR':4,
+            'singleTPR':1,
+        },          
     	'clara_v0.5':{
             'stagedMachines':['fe-sandbox.psc.edu'],
             'defaultMachine':['fe-sandbox.psc.edu'],
@@ -154,7 +182,9 @@ configuration = {
             'debug':'',
 	    'mediumPPR':1,
 	    'mediumTPR':1,
-            'mediumReals':1 
+        'mediumReals':1,
+        'singlePPR':1,
+        'singleTPR':1
 	},
     	'test':{
             'stagedMachine':['olympus.psc.edu', 'blacklight.psc.xsede.org', 'unicron.psc.edu'],

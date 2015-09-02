@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <wsdl:definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-	xmlns:tns="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/"
+	xmlns:tns="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/"
 	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-	name="SimulatorService_v3.0.0" targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/">
+	name="SimulatorService_v3.0.2" targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/">
 	<wsdl:types>
-		<xsd:schema targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/"
-			xmlns:sst="http://simulator-service-types.apollo.pitt.edu/v3_0_0/"
-			xmlns:services="http://services-common.apollo.pitt.edu/v3_0_0/">
+		<xsd:schema targetNamespace="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/"
+			xmlns:sst="http://simulator-service-types.apollo.pitt.edu/v3_0_2/"
+			xmlns:services="http://services-common.apollo.pitt.edu/v3_0_2/">
 
-			<xsd:import schemaLocation="http://research.rods.pitt.edu/apollo-schemas/simulator-service_3.0.0.xsd"
-				namespace="http://simulator-service-types.apollo.pitt.edu/v3_0_0/">
+			<xsd:import schemaLocation="http://gaia.pha.psc.edu/simulator_service_3.0.2.xsd"
+				namespace="http://simulator-service-types.apollo.pitt.edu/v3_0_2/">
 			</xsd:import>
-			<xsd:import schemaLocation="http://research.rods.pitt.edu/apollo-schemas/services-common_3.0.0.xsd"
-				namespace="http://services-common.apollo.pitt.edu/v3_0_0/">
+			<xsd:import schemaLocation="http://gaia.pha.psc.edu/services_common_3.0.2.xsd"
+				namespace="http://services-common.apollo.pitt.edu/v3_0_2/">
 			</xsd:import>
 			<xsd:element name="runSimulation">
 				<xsd:complexType>
@@ -191,7 +191,7 @@
 			transport="http://schemas.xmlsoap.org/soap/http" />
 		<wsdl:operation name="runSimulation">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/runSimulation" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/runSimulation" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -201,7 +201,7 @@
 		</wsdl:operation>
 		<wsdl:operation name="getScenarioLocationCodesSupportedBySimulator">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/getScenarioLocationCodesSupportedBySimulator" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/getScenarioLocationCodesSupportedBySimulator" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -211,7 +211,7 @@
 		</wsdl:operation>
 		<wsdl:operation name="runSimulations">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/runSimulations" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/runSimulations" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -222,7 +222,7 @@
 
 		<wsdl:operation name="getPopulationAndEnvironmentCensus">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/getPopulationAndEnvironmentCensus" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/getPopulationAndEnvironmentCensus" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -232,7 +232,7 @@
 		</wsdl:operation>
 		<wsdl:operation name="terminateRun">
 			<soap:operation
-				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_0/terminateRun" />
+				soapAction="http://service.apollo.pitt.edu/simulatorservice/v3_0_2/terminateRun" />
 			<wsdl:input>
 				<soap:body use="literal" />
 			</wsdl:input>
@@ -241,7 +241,7 @@
 			</wsdl:output>
 		</wsdl:operation>
 	</wsdl:binding>
-	<wsdl:service name="SimulatorService_v3.0.0">
+	<wsdl:service name="SimulatorService_v3.0.2">
 		<wsdl:port binding="tns:SimulatorServiceBinding" name="SimulatorServiceEndpoint">
 			<soap:address
 				location="http://localhost:8080/simulatorservice202/services/simulatorservice" />

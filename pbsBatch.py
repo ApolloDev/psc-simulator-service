@@ -1,24 +1,3 @@
-# Copyright 2012 Pittsburgh Supercomputing Center
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not
-# use this file except in compliance with the License.  You may obtain a copy of
-# the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
-# License for the specific language governing permissions and limitations under
-# the License.
-
-
-'''
-Created on Jan 2014
-
-@author: Shawn Brown
-'''
-
 import paths
 from apollo import ApolloDB
 
@@ -77,17 +56,15 @@ class PBSBatch:
             #jsonStr = self._apolloDB.getRunDataContentFromRunIdAndLabel(runId,"run_simulation_message.json",0,1,"TEXT","")
             translatorServiceId = self._apolloDB.getTranslatorServiceKey()
             simulatorServiceId = self._apolloDB.getSimulatorServiceKey(dev,name,ver)
-            
             simulatorInputFileDict = self._apolloDB.getSimulationInputFilesForRunId(runId,translatorServiceId,simulatorServiceId)
-            
             if isinstance(simulatorInputFileDict,dict):
-		if "config.txt" not in simulatorInputFileDict.keys():
-			raise
+                #if "config.txt" not in simulatorInputFileDict.keys():
+#         			raise
                 for filename,content in simulatorInputFileDict.items():
                     if filename != "verbose.html":
                         self.add_file_to_job(runId,filename,content)
             
-            self.add_file_to_job(runId,'apollo_run.csh',self._createIndividualRunScript(runId))
+                self.add_file_to_job(runId,'apollo_run.csh',self._createIndividualRunScript(runId))
     
            
     def create_zipFile(self,zipFileName_):
@@ -156,13 +133,13 @@ class PBSBatch:
         scriptList.append('   exit 1\n')
         scriptList.append('endif\n')
         scriptList.append('%s\n' % self._simConf['preProcessCommand'])
-        scriptList.append('({0} {1} config.txt {2} {3} {4} {5} > run.stdout) >& run.stderr\n'.format(self._simConf['runCommand'],
-                                                                                          self._simConf['moduleName'][self._simConf['stagedMachines'].index(self._machineConf['hostname'])],
-                                                                                          self._threadsPerRun,
-                                                                                          self._simConf['mediumReals'],
-                                                                                          self._procsPerRun,
-                                                                                          id))
-        scriptList.append('set errCont = `stat -c %s run.stderr`\n')
+        scriptList.append('({0} {1} config.txt {2} {3} {4} {5} > run.exe.stdout) >& run.exe.stderr\n'.format(self._simConf['runCommand'],
+                                                                                                             self._simConf['moduleName'][self._simConf['stagedMachines'].index(self._machineConf['hostname'])],
+                                                                                                             self._threadsPerRun,
+                                                                                                             self._simConf['mediumReals'],
+                                                                                                             self._procsPerRun,
+                                                                                                             id))
+        scriptList.append('set errCont = `stat -c %s run.exe.stderr`\n')
         scriptList.append('if ($status || $errCont != "0") then\n')
         scriptList.append('   %s %s -t../ -s failed -m "The simulation failed during running"  >& out.db\n' % (self._simConf['statusCommand'].replace("<<ID>>", str(id)).replace("<<bID>>",str(self.batchId)), dbString))
         scriptList.append('   if ($status) then\n')
@@ -178,8 +155,8 @@ class PBSBatch:
         scriptList.append('      exit 1\n')
         scriptList.append('   endif\n')
         scriptList.append('endif\n')
-        scriptList.append('(%s %s> run.stdout) > & run.stderr\n' % (self._simConf['dbCommand'].replace("<<tID>>", "%s_%s" % (str(tempId), str(id))).replace('<<ID>>', str(id)).replace("<<bID>>",str(self.batchId)), dbString))
-        scriptList.append('set errCont = `stat -c %s run.stderr`\n')
+        scriptList.append('(%s %s> run.db.stdout) > & run.db.stderr\n' % (self._simConf['dbCommand'].replace("<<tID>>", "%s_%s" % (str(tempId), str(id))).replace('<<ID>>', str(id)).replace("<<bID>>",str(self.batchId)), dbString))
+        scriptList.append('set errCont = `stat -c %s run.db.stderr`\n')
         scriptList.append('if ($status || $errCont != "0") then\n')
         scriptList.append('   %s %s -t ../ -s failed -m "Database upload failed" >& out.db\n' % (self._simConf['statusCommand'].replace("<<ID>>", str(id)).replace("<<bID>>",str(self.batchId)), dbString))
         scriptList.append('   if ($status) then\n')
