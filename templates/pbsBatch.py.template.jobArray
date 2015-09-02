@@ -1,0 +1,76 @@
+#!<<env>> python
+
+import os, glob, sys, math,stat,subprocess
+import random,string
+
+
+def chunks(l, n):
+	for i in xrange(0, len(l), n):
+		yield(l[i:i + n])
+
+
+def unzip_runs():
+	import zipfile
+	filename = "job_packet.zip"
+	with open(filename,"rb") as f:
+		z = zipfile.ZipFile(f)
+		z.extractall("./")
+
+
+def main():	
+
+	cwd = os.getcwd()
+	threadsPerRun = <<threadsPerRun>>
+	processesPerRun = <<procsPerRun>>
+
+	#with open(pbsNodesFile, "rb") as f:
+	#	pbsMachinesList = [x.strip() for x in f.readlines()]	
+	
+	nodes = <<nodes>> 
+	coresPerNode = <<ppn>>
+	
+	unzip_runs()
+	listOfRuns = glob.glob('run_*')
+	
+	listToRun = []
+	
+	from apollo import ApolloDB
+	apolloDB = ApolloDB(host_="<<dbhost>>",dbname_="<<dbname>>",user_="<<dbuser>>",password_="<<dbpass>>")
+	apolloDB.connect()
+	
+	for run in listOfRuns:
+		id = run.replace("run_","")
+		status,message = apolloDB.getRunStatus(id)
+		if status != 'completed':
+			listToRun.append(run)
+	
+	if len(listToRun) == 0:
+		print "All Runs are Cached"
+		apolloDB.setRunStatus(<<bID>>,"completed","This batch {0} jobs completed with all cached runs.".format(len(listOfRuns)))
+		sys.exit(0)
+	
+	for run in listToRun:
+		st = os.stat("{0}/apollo_run.csh".format(run))
+	 	os.chmod("{0}/apollo_run.csh".format(run),st.st_mode | stat.S_IEXEC)
+			
+	with open("batch_run_script.csh","wb") as f:
+		f.write("#!/bin/csh -f\n\n")
+		f.write("#PBS -l nodes=1:ppn={0}\n".format(coresPerNode))
+		f.write("#PBS -l walltime=<<walltime>>\n")
+		f.write("#PBS -l mem=2gb\n")
+ 		f.write("#PBS -o apollo.out.txt\n")
+ 		f.write("#PBS -e apollo.err.txt\n")
+ 		f.write("#PBS -t 1-{0}\n".format(len(listToRun)))
+ 		f.write("\n")
+ 		f.write("cd $PBS_O_WORKDIR\n")
+ 		f.write("set jobList = (")
+ 		f.write("{0} )\n".format(" ".join(listToRun)))
+ 		f.write("ls -l $jobList[$PBS_ARRAYID]\n")
+ 		f.write("cd $jobList[$PBS_ARRAYID]\n")
+ 		f.write("./apollo_run.csh\n")
+ 		f.write("rm -rf OUT/*\n")
+ 	#retcode = subprocess.call('<<submitCommand>> batch_run_script.csh',shell=True)
+
+if __name__=='__main__':
+	main()
+ 	

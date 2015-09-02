@@ -1,0 +1,112 @@
+#!<<env>> python
+
+import os, glob, sys, math,stat,subprocess
+import random,string,time
+
+
+def chunks(l, n):
+	for i in xrange(0, len(l), n):
+		yield(l[i:i + n])
+
+
+def unzip_runs():
+	import zipfile
+	filename = "job_packet.zip"
+	with open(filename,"rb") as f:
+		z = zipfile.ZipFile(f)
+		z.extractall("./")
+
+
+def main():	
+
+	cwd = os.getcwd()
+	threadsPerRun = <<threadsPerRun>>
+	processesPerRun = <<procsPerRun>>
+
+	#with open(pbsNodesFile, "rb") as f:
+	#	pbsMachinesList = [x.strip() for x in f.readlines()]	
+	
+	nodes = <<nodes>> 
+	coresPerNode = <<ppn>>
+	
+	unzip_runs()
+	listOfRuns = glob.glob('run_*')
+	
+	listToRun = []
+	
+	from apollo import ApolloDB
+	apolloDB = ApolloDB(host_="<<dbhost>>",dbname_="<<dbname>>",user_="<<dbuser>>",password_="<<dbpass>>")
+	apolloDB.connect()
+	
+	for run in listOfRuns:
+		id = run.replace("run_","")
+		status,message = apolloDB.getRunStatus(id)
+		if status != 'completed':
+			listToRun.append(run)
+	
+	if len(listToRun) == 0:
+		print "All Runs are Cached"
+		apolloDB.setRunStatus(<<bID>>,"completed","This batch {0} jobs completed with all cached runs.".format(len(listOfRuns)))
+		sys.exit(0)
+			
+	nodes = min(len(listToRun),nodes)
+	
+	coresPerRun = threadsPerRun * processesPerRun
+	
+	jobsPerNode = int(math.floor(coresPerNode / coresPerRun))*2
+	
+	jobMap = {}
+	for n in range(0,nodes):
+		jobMap[n] = []
+	
+	runsPerNode = int(math.floor(float(len(listToRun))/float(nodes)))
+	
+	runListChunks = list(chunks(listToRun,runsPerNode))
+	
+	while len(runListChunks) > nodes:
+		leftover = runListChunks[-1]
+		countList = 0
+		for run in leftover:
+			runListChunks[countList].append(run)
+			countList +=1
+		del runListChunks[-1]
+		
+ 	for i in range(0,nodes):
+ 		thisRunList = runListChunks[i]
+ 		jobMap[i] = list(chunks(thisRunList,jobsPerNode))
+ 		
+	for node,runList in jobMap.items():
+ 		with open("batch_run_script_{0}.csh".format(node),"wb") as f:
+ 			f.write("#!/bin/csh\n")
+ 			f.write("#PBS -l nodes=1:ppn={0}\n".format(coresPerNode))
+ 			f.write("#PBS -l walltime=<<walltime>>\n")
+ 			f.write("#PBS -l mem=100gb\n")
+ 			f.write("#PBS -o apollo{0}.out.txt\n".format(node))
+ 			f.write("#PBS -e apollo{0}.err.txt\n".format(node))
+ 			f.write("\n")
+ 			f.write("cd $PBS_O_WORKDIR\n")
+ 			f.write("<<special>>\n")
+ 			#f.write("python apollo_batch_update_status.py -r <<bId>> -H <<dbhost>> -D <<dbname>> -U <<dbuser>> -P <<dbpass>>\n")
+ 			
+ 			if <<use_parallel>>:
+ 				with open("joblist_{0}".format(node),"wb") as g:
+ 					for runs in runList:
+ 						for run in runs:
+ 							g.write("cd {0};./apollo_run.csh\n".format(run))
+ 							st = os.stat("{0}/apollo_run.csh".format(run))
+	 						os.chmod("{0}/apollo_run.csh".format(run),st.st_mode | stat.S_IEXEC)
+ 				f.write("cat joblist_{0} | parallel -j {1} -I {{}}\n".format(node,jobsPerNode))
+ 			else:
+	 			for runs in runList:
+	 				for run in runs:
+	 					f.write("cd {0};./apollo_run.csh;cd .. &\n".format(run))			
+	 					st = os.stat("{0}/apollo_run.csh".format(run))
+	 					os.chmod("{0}/apollo_run.csh".format(run),st.st_mode | stat.S_IEXEC)
+	 				f.write("wait\n")
+	 	time.sleep(5)
+		retcode = subprocess.call('<<submitCommand>> batch_run_script_{0}.csh'.format(node),shell=True)
+	
+	#retcode = subprocess.call('python <<apBatchUpdate>> -H <<dbhost>> -D <<dbname>> -U <<dbuser>> -P <<dbpass>> -b <<bID>> -t ../ >& {0}/out.db'.format(os.getcwd()),shell=True)
+if __name__=='__main__':
+	main()
+ 	
