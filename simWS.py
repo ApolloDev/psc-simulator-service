@@ -31,7 +31,7 @@ configuration = {
             'port':'8099',
             'version':'3.0.2',
             'apolloDBName':'apollo_302_snapshot',
-            'apolloDBHost':'pha-db.psc.edu',
+            'apolloDBHost':'',
             'apolloDBUser':',
             'apolloDBPword':''
     },
