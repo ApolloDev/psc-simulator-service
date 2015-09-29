@@ -32,8 +32,8 @@ configuration = {
             'version':'3.0.2',
             'apolloDBName':'apollo_302_snapshot',
             'apolloDBHost':'pha-db.psc.edu',
-            'apolloDBUser':'apolloint',
-            'apolloDBPword':'int4p011o'
+            'apolloDBUser':',
+            'apolloDBPword':''
     },
     # Private key files will have to be updated by the user
     'machines':{
