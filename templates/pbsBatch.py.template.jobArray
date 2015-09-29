@@ -60,7 +60,7 @@ def main():
 		f.write("#PBS -l mem=2gb\n")
  		f.write("#PBS -o apollo.out.txt\n")
  		f.write("#PBS -e apollo.err.txt\n")
- 		f.write("#PBS -t 1-{0}\n".format(len(listToRun)))
+ 		f.write("#PBS -t 1-{0}%%128\n".format(len(listToRun)))
  		f.write("\n")
  		f.write("cd $PBS_O_WORKDIR\n")
  		f.write("set jobList = (")
@@ -68,8 +68,8 @@ def main():
  		f.write("ls -l $jobList[$PBS_ARRAYID]\n")
  		f.write("cd $jobList[$PBS_ARRAYID]\n")
  		f.write("./apollo_run.csh\n")
- 		f.write("rm -rf OUT/*\n")
- 	#retcode = subprocess.call('<<submitCommand>> batch_run_script.csh',shell=True)
+ 		#f.write("rm -rf OUT/*\n")
+ 	retcode = subprocess.call('<<submitCommand>> batch_run_script.csh',shell=True)
 
 if __name__=='__main__':
 	main()

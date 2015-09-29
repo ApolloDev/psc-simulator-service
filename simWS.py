@@ -44,10 +44,10 @@ configuration = {
                 'privateKeyFile':'/usr/local/packages/.k/id_rsa.login.olympus',
                 'queueType':'PBS',
                 'priorityQueue':'batch',
-                'remoteDir':'/home/ows_simulator/apolloTemp',
+                'remoteDir':'/mnt/beegfs/users/ows_simulator/apolloTemp',
                 'submitCommand':'/opt/bin/qsub',
                 'special':'source /opt/packages/virtualenvs/ows2.7/bin/activate.csh; module load gnu_parallel',
-                'apolloPyLoc':'/local/apollo-db-files',
+                'apolloPyLoc':'/mnt/beegfs/users/ows_simulator/apollo-db-files',
                 'qstatCommand':'qstat',
                 'useModules':True,
                 'big':'-l nodes=4:ppn=16',
@@ -55,8 +55,8 @@ configuration = {
                 'small':'-l nodes=1:ppn=16',
                 'debug':'-l nodes=1:ppn=8',
                 'getID':"set words = `echo $PBS_JOBID | sed 's/\./ /g'`; set id = $words[1]",
-                'ppn':32,
-                'mediumBatch':36,
+                'ppn':8,
+                'mediumBatch':144,
                 'useParallel':True,
                 'env':'/bin/env'
     	},
@@ -69,6 +69,7 @@ configuration = {
             'PSC_CLARA_0.5_':'clara_v0.5',
 	        'UPitt_SEIR_3.0':'seir_30',
             'PSC_OpenMalaria_1.0_':'openmalaria_32',
+	    'PSC_OpenMalaria_R0063_':'openmalaria_32',
             'test':'test',
             'fred':'fred_V1'
         },
@@ -104,8 +105,8 @@ configuration = {
             'mediumPPR':1,
             'mediumTPR':2,
             'mediumReals':4,
-            'singlePPR':8,
-            'singleTPR':4,
+            'singlePPR':4,
+            'singleTPR':2,
             'singleReals':8
             
         },

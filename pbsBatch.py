@@ -45,7 +45,7 @@ class PBSBatch:
         
         self._apolloDB.connect()
         runsToPopulateWith = self._apolloDB.getRunsFromRunId(self.batchId)
-        
+        print "RunToPopulate = {0}".format(runsToPopulateWith)
         if len(runsToPopulateWith) == 0:
             raise RuntimeError("PBSBatch class:: population_from_apollo_runId: no runs in the database with simulation_group_id:{0}".format(self.batchId))
         

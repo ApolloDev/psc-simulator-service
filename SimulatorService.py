@@ -83,8 +83,8 @@ def monitorBatchStatus(batchId,apolloDB):
             apolloDB.setRunStatus(batchId,overallStatus,message)
             if overallStatus == "completed":
                 break
-            if overallStatus == "failed":
-                break
+            #if overallStatus == "failed":
+            #    break
         time.sleep(5)
         
 class SimulatorWebService(SimulatorService_v3_0_2):
@@ -142,11 +142,11 @@ class SimulatorWebService(SimulatorService_v3_0_2):
         try:
             transId = apolloDB.getSoftwareIdentificationId("Translator","1.0")
             endId = apolloDB.getSoftwareIdentificationId("any","any")
-
-            jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(init_runId,"run_simulation_message.json",
-                                                                  endId,transId,"TEXT","RUN_SIMULATION_MESSAGE")
+            print "Attempting to call here"
+            jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(init_runId,"run_simulations_message.json",
+                                                                  endId,transId,"TEXT","RUN_SIMULATIONS_MESSAGE")
             jsonDict = json.loads(jsonStr)
-            user = jsonDict['authentication']['requesterId']
+            user = "shawn" #jsonDict['authentication']['requesterId']
             
         except Exception as e:
             apolloDB.setRunStatus(init_runId,"failed",str(e))
@@ -291,10 +291,10 @@ class SimulatorWebService(SimulatorService_v3_0_2):
         try:
             transId = apolloDB.getSoftwareIdentificationId("Translator","1.0")
             endId = apolloDB.getSoftwareIdentificationId("any","any")
-            jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(runId,"run_simulation_message.json",
-                                                                  endId,transId,"TEXT","RUN_SIMULATION_MESSAGE")
+            jsonStr = apolloDB.getRunDataContentFromRunIdAndLabel(runId,"run_message.json",
+                                                                  endId,transId,"TEXT","RUN_MESSAGE")
             jsonDict = json.loads(jsonStr)
-            user = jsonDict['authentication']['requesterId']
+            user = "Shawn" #jsonDict['authentication']['requesterId']
             
         except Exception as e:
             apolloDB.setRunStatus(runId,"failed",str(e))
@@ -364,7 +364,7 @@ class SimulatorWebService(SimulatorService_v3_0_2):
             shutil.rmtree(tempDirName)
             
             self.logger.update("SVC_FILE_SEND_SUCCESS",message="%s"%tempDirName)
-            apolloDB.setRunStatus(init_runId,"staging","run files successfully retrieved from the databae")
+            apolloDB.setRunStatus(init_runId,"staging","run files successfully retrieved from the database")
         except Exception as e:
             self.logger.update("SVC_FILE_SEND_FAILED",message="%s"%e)
             apolloDB.setRunStatus(init_runId,"failed",self.logger.pollStatus()[1])
