@@ -13,7 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
 # License for the specific language governing permissions and limitations under
 # the License.
-#from SimulatorService_v2_0_2_services import runSimulationRequest
 '''
 Created on Nov 27, 2012
 
@@ -21,10 +20,10 @@ Created on Nov 27, 2012
 '''
 
 import paths
-from SimulatorService_v3_0_2_server import SimulatorService_v3_0_2
+from SimulatorService_v3_1_0_server import SimulatorService_v3_1_0
 from ZSI import *
 from ZSI.ServiceContainer import AsServer
-from SimulatorService_v3_0_2_types import *
+from SimulatorService_v3_1_0_types import *
 from ApolloFactory import *
 from ApolloUtils import *
 import os,sys
@@ -87,7 +86,7 @@ def monitorBatchStatus(batchId,apolloDB):
             #    break
         time.sleep(5)
         
-class SimulatorWebService(SimulatorService_v3_0_2):
+class SimulatorWebService(SimulatorService_v3_1_0):
     _wsdl = "".join(open(simWS.configuration['local']['wsdlFile']).readlines())
         
     factory = ApolloFactory()
@@ -107,7 +106,7 @@ class SimulatorWebService(SimulatorService_v3_0_2):
             apolloDB.connect()
             
             #initialize the return information
-            response = SimulatorService_v3_0_2.soap_runSimulations(self, ps, **kw)
+            response = SimulatorService_v3_1_0.soap_runSimulations(self, ps, **kw)
             response[1]._runSimulationsResult = self.factory.new_RunResult()
             response[1]._runSimulationsResult._runId = response[0]._simulationRunId
             response[1]._runSimulationsResult._methodCallStatus = self.factory.new_MethodCallStatus()
@@ -126,7 +125,9 @@ class SimulatorWebService(SimulatorService_v3_0_2):
     
         try:
             ### get the software information from the message
-            (name,dev,ver) = apolloDB.getSoftwareIdentificationForRunId(init_runId)
+	    print "Entering"
+	    print apolloDB.getBatchAware_SoftwareIdentificationForRunId(init_runId)
+            (name,dev,ver) = apolloDB.getBatchAware_SoftwareIdentificationForRunId(init_runId)
             idPrefix = "%s_%s_%s_"%(dev,name,ver)
         
             self.logger.update("SVC_APL_TRANS_RECV",message="%s"%str(idPrefix))
@@ -255,7 +256,7 @@ class SimulatorWebService(SimulatorService_v3_0_2):
                                 user_=simWS.configuration['local']['apolloDBUser'],
                                 password_=simWS.configuration['local']['apolloDBPword'])
             apolloDB.connect()
-            response = SimulatorService_v3_0_2.soap_runSimulation(self, ps, **kw)
+            response = SimulatorService_v3_1_0.soap_runSimulation(self, ps, **kw)
 
             #initialize the return information
             response[1]._methodCallStatus = self.factory.new_MethodCallStatus()
@@ -277,7 +278,9 @@ class SimulatorWebService(SimulatorService_v3_0_2):
         # Parse and Translate the Apollo message First
         try:
             # Get the information about the simulator
-            (name,dev,ver) = apolloDB.getSoftwareIdentificationForRunId(runId)
+	    print "neter"
+            (name,dev,ver) = apolloDB.getBatchAware_SoftwareIdentificationForRunId(runId)
+	    print "name"
             idPrefix = "%s_%s_%s_"%(dev,name,ver)
             self.logger.update("SVC_APL_TRANS_RECV",message="%s"%str(idPrefix))
         except Exception as e:

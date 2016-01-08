@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="http://simulator-service-types.apollo.pitt.edu/v3_1_0/"
+	xmlns:tns="http://simulator-service-types.apollo.pitt.edu/v3_1_0/"
+	elementFormDefault="qualified" xmlns:common="http://services-common.apollo.pitt.edu/v3_1_0/"
+	xmlns:apollo="http://types.apollo.pitt.edu/v3_1_0/">
+
+	<import schemaLocation="services_common_3.1.0.xsd"
+		namespace="http://services-common.apollo.pitt.edu/v3_1_0/">
+	</import>
+
+	<import schemaLocation="apollo_types_3.1.0.xsd" namespace="http://types.apollo.pitt.edu/v3_1_0/"></import>
+
+
+	<complexType name="RunSimulationResult">
+		<sequence>
+			<element name="runId" type="common:RunIdentification" />
+		</sequence>
+	</complexType>
+
+	<complexType name="GetScenarioLocationCodesSupportedBySimulatorResult">
+		<sequence>
+			<element name="methodCallStatus" type="common:MethodCallStatus"
+				maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="locationCodes" type="apollo:ApolloLocationCode"
+				maxOccurs="unbounded" minOccurs="1">
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="GetPopulationAndEnvironmentCensusResult">
+		<sequence>
+			<element name="methodCallStatus" type="common:MethodCallStatus"
+				maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="populationAndEnvironmentCensus" type="apollo:PopulationAndEnvironmentCensus"
+				maxOccurs="1" minOccurs="1">
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="GetConfigurationFileForSimulationResult">
+		<sequence>
+			<element name="methodCallStatus" type="common:MethodCallStatus"
+				maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="configurationFile" type="string" maxOccurs="1"
+				minOccurs="0">
+			</element>
+			<element name="configurationFileInHtmlFormat" type="string"
+				maxOccurs="1" minOccurs="0">
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="RunSimulationMessage">
+		<complexContent>
+		<extension base="common:RunMessage">
+		<sequence>
+                    	<element name="softwareIdentification" type="apollo:SoftwareIdentification"></element>
+			<element name="simulatorTimeSpecification" type="apollo:SimulatorTimeSpecification"
+				maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="infectiousDiseaseScenario" type="apollo:InfectiousDiseaseScenario"
+				maxOccurs="1" minOccurs="1" />
+			<!-- <element name="softwareOutputStratificationGranularity" type="common:SoftwareOutputStratificationGranularity" 
+				minOccurs="1" maxOccurs="1"/> -->
+		</sequence>
+		</extension>
+	</complexContent>
+	</complexType>
+
+    
+    <element name="RunSimulationMessageElement" type="tns:RunSimulationMessage"/>
+</schema>

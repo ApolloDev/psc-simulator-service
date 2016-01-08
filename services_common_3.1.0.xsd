@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://services-common.apollo.pitt.edu/v3_1_0/"
+	xmlns:tns="http://services-common.apollo.pitt.edu/v3_1_0/"
+		xmlns:apollo="http://types.apollo.pitt.edu/v3_1_0/"
+	elementFormDefault="qualified">
+
+	<import schemaLocation="apollo_types_3.1.0.xsd" namespace="http://types.apollo.pitt.edu/v3_1_0/"></import>
+
+	<!-- need to add an element here for any class you want to be able to serialize with JAXB -->
+	<element name="MethodCallStatusElement" type="tns:MethodCallStatus"/>
+	<element name="SoftwareLicenseIdentificationElement" type="apollo:SoftwareLicenseIdentification"/>
+	<element name="SoftwareIdentificationElement" type="apollo:SoftwareIdentification"/>
+	<element name="RunResultElement" type="tns:RunResult"/>
+	<element name="RunStatusElement" type="tns:RunStatus"/>
+	<element name="RunIdentificationAndLabelElement" type="tns:RunIdentificationAndLabel"/>
+	<element name="TerminateRunRequestElement" type="tns:TerminateRunRequest"/>
+	<element name="ServiceRegistrationRecordElement" type="tns:ServiceRegistrationRecord"/>
+	<element name="UrlOutputResourceElement" type="tns:UrlOutputResource"/>
+	<element name="ServiceRecordElement" type="tns:ServiceRecord"/>
+	<element name="TerminteRunResultElement" type="tns:TerminteRunResult"/>
+	<element name="RunIdentificationElement" type="tns:RunIdentification"/>
+	<element name="FileAndURLDescriptionElement" type="apollo:SoftwareIdentification"/>
+	<element name="ObjectSerializationInformationElement" type="tns:ObjectSerializationInformation"/>
+	<element name="RequestMetaElement" type="tns:RequestMeta"/>
+	<element name="ResponseMetaElement" type="tns:ResponseMeta"/>
+	<element name="RequestElement" type="tns:Request"/>
+	<element name="ResponseElement" type="tns:Response"/>
+	<element name="RunMessageElement" type="tns:RunMessage"/>
+	<element name="InsertRunResultElement" type="tns:InsertRunResult"/>
+
+
+	<simpleType name="SoftwareOutputStratificationGranularity">
+		<restriction base="string">
+			<enumeration value="byTopLevelLocationAndInfectionStateOverTime" />
+			<enumeration value="allStratificationsAtTheFinestGranularity" />
+		</restriction>
+	</simpleType>
+	
+
+        
+	<simpleType name="ContentDataTypeEnum">
+		<restriction base="string">
+			<enumeration value="SIMULATOR_LOG_FILE" />
+			<enumeration value="CONFIGURATION_FILE" />
+			<enumeration value="IMAGE" />
+			<enumeration value="MOVIE" />
+			<enumeration value="RUN_MESSAGE" />
+		</restriction>
+	</simpleType>
+
+	<simpleType name="ContentDataFormatEnum">
+		<restriction base="string">
+			<enumeration value="TEXT" />
+			<enumeration value="URL" />
+			<enumeration value="ZIP" />
+		</restriction>
+	</simpleType>
+
+	<complexType name="RunMessage">
+		<sequence>
+			<element name="authentication" type="tns:Authentication"></element>
+		</sequence>
+	</complexType>
+
+
+
+
+	<complexType name="RunResult">
+		<sequence>
+			<element name="runId" type="tns:RunIdentification" />
+			<element name="methodCallStatus" type="tns:MethodCallStatus">
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="InsertRunResult">
+		<sequence>
+			<element name="runId" type="tns:RunIdentification" />
+			<element name="runCached" type="boolean">
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="RunStatus">
+		<sequence>
+			<element name="runId" type="tns:RunIdentification" />
+			<element name="status" type="tns:MethodCallStatusEnum"
+				maxOccurs="1" minOccurs="1" />
+			<element name="message" type="string" maxOccurs="1"
+				minOccurs="1" />
+		</sequence>
+	</complexType>
+
+	<complexType name="RunIdentificationAndLabel">
+		<sequence>
+			<element name="runIdentification" type="tns:RunIdentification">
+			</element>
+			<element name="runLabel" type="string"></element>
+		</sequence>
+	</complexType>
+	<complexType name="TerminateRunRequest">
+		<sequence>
+			<element name="runIdentification" type="tns:RunIdentification">
+			</element>
+			<element name="authentication" type="tns:Authentication"></element>
+		</sequence>
+	</complexType>
+
+	<complexType name="ServiceRegistrationRecord">
+		<complexContent>
+			<extension base="tns:ServiceRecord">
+				<sequence>
+					<element name="authentication" type="tns:Authentication" />
+				</sequence>
+			</extension>
+		</complexContent>
+	</complexType>
+
+	<complexType name="UrlOutputResource">
+		<sequence>
+			<element name="description" type="string" />
+			<element name="URL" type="token" />
+		</sequence>
+	</complexType>
+
+	<complexType name="ServiceResult">
+		<sequence>
+			<element name="description" type="string" />
+			<element name="URL" type="anyURI" />
+		</sequence>
+	</complexType>
+
+
+	<complexType name="TerminteRunResult">
+		<sequence>
+			<element name="methodCallStatus" type="tns:MethodCallStatus">
+			</element>
+		</sequence>
+	</complexType>
+	<complexType name="Role">
+		<sequence>
+			<element name="softwareIdentification" type="apollo:SoftwareIdentification">
+			</element>
+			<element name="can_run" type="boolean"></element>
+			<element name="can_view_cached_results" type="boolean"></element>
+		</sequence>
+	</complexType>
+
+	<complexType name="ServiceRecord">
+		<sequence>
+			<element name="url" type="anyURI" />
+			<element name="softwareIdentification" type="apollo:SoftwareIdentification" />
+		</sequence>
+	</complexType>
+	<simpleType name="RunIdentification">
+		<restriction base="unsignedLong" />
+	</simpleType>
+	<complexType name="Authentication">
+		<sequence>
+			<element name="requesterId" type="token" maxOccurs="1"
+				minOccurs="1">
+			</element>
+			<element name="requesterPassword" type="token" maxOccurs="1"
+				minOccurs="1" />
+		</sequence>
+	</complexType>
+
+
+	<simpleType name="MethodCallStatusEnum">
+		<restriction base="string">
+			<enumeration value="exiting" />
+			<enumeration value="held" />
+			<enumeration value="queued" />
+			<enumeration value="called_translator" />
+			<enumeration value="called_visualizer" />
+			<enumeration value="called_simulator" />
+			<enumeration value="called_data_service" />
+			<enumeration value="translating" />
+			<enumeration value="translation_completed" />
+			<enumeration value="initializing" />
+			<enumeration value="log_files_written" />
+			<enumeration value="loading_run_config_into_database" />
+			<enumeration value="loaded_run_config_into_database" />
+			<enumeration value="staging" />
+			<enumeration value="running" />
+			<enumeration value="moving" />
+			<enumeration value="waiting" />
+			<enumeration value="completed" />
+			<enumeration value="failed" />
+			<enumeration value="unauthorized" />
+			<enumeration value="unknown_runid" />
+			<enumeration value="run_terminated" />
+			<enumeration value="authentication_failure" />
+		</restriction>
+	</simpleType>
+
+	<complexType name="MethodCallStatus">
+		<sequence>
+			<element name="status" type="tns:MethodCallStatusEnum"
+				maxOccurs="1" minOccurs="1" />
+			<element name="message" type="string" maxOccurs="1"
+				minOccurs="1" />
+		</sequence>
+	</complexType>
+
+	<simpleType name="RunActionEnum">
+		<restriction base="string">
+			<enumeration value="start" />
+			<enumeration value="terminate" />
+		</restriction>
+	</simpleType>
+
+	<complexType name="FileAndURLDescription">
+		<sequence>
+			<element name="sourceSoftwareIdentification" type="apollo:SoftwareIdentification"
+					 maxOccurs="1" minOccurs="1" />
+			<element name="destinationSoftwareIdentification" type="apollo:SoftwareIdentification"
+					 maxOccurs="1" minOccurs="1" />
+			<element name="name" type="string" maxOccurs="1"
+					 minOccurs="1" />
+			<element name="contentType" type="tns:ContentDataTypeEnum" minOccurs="1" maxOccurs="1"/>
+			<element name="contentFormat" type="tns:ContentDataFormatEnum" minOccurs="1" maxOccurs="1"/>
+		</sequence>
+	</complexType>
+
+	<simpleType name="SerializationFormat">
+		<restriction base="string">
+			<enumeration value="JSON" />
+			<enumeration value="XML" />
+		</restriction>
+	</simpleType>
+
+	<complexType name="ObjectSerializationInformation">
+		<sequence>
+			<element name="format" type="tns:SerializationFormat"></element>
+			<element name="className" type="token"
+					 maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="classNameSpace" type="token"
+					 maxOccurs="1" minOccurs="1">
+			</element>
+		</sequence>
+	</complexType>
+	<complexType name="RequestMeta">
+		<sequence>
+			<element name="requestBodySerializationInformation" type="tns:ObjectSerializationInformation" minOccurs="1" maxOccurs="1"></element>
+			<element name="isBodySerialized" type="boolean"></element>
+		</sequence>
+	</complexType>
+
+	<complexType name="ResponseMeta">
+		<sequence>
+			<element name="status" type="positiveInteger"
+					 maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="statusMessage" type="token"
+					 maxOccurs="1" minOccurs="1">
+			</element>
+			<element name="source" type="token" maxOccurs="1"
+					 minOccurs="1">
+			</element>
+			<element name="numberOfReturnedResults" type="positiveInteger" minOccurs="1" maxOccurs="1">
+			</element>
+			<element name="responseBodySerializationInformation" type="tns:ObjectSerializationInformation" minOccurs="1" maxOccurs="1"></element>
+			<element name="isBodySerialized" type="boolean"></element>
+		</sequence>
+	</complexType>
+
+	<complexType name="Response">
+		<sequence>
+			<element name="responseMeta" type="tns:ResponseMeta"
+					 maxOccurs="1" minOccurs="1" />
+			<element name="responseBody" type="string" maxOccurs="unbounded"
+					 minOccurs="0" />
+		</sequence>
+	</complexType>
+
+	<complexType name="Request">
+		<sequence>
+			<element name="requestMeta" type="tns:RequestMeta"
+					 maxOccurs="1" minOccurs="1" />
+			<element name="requestBody" type="string" maxOccurs="1"
+					 minOccurs="1" />
+		</sequence>
+	</complexType>
+
+</schema>
+	
